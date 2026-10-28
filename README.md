@@ -40,5 +40,6 @@ To link a screen to a different sign, open ShulPortal on a phone, rotate that si
 - The image is built by `.github/workflows/release.yml` with [pi-gen](https://github.com/RPi-Distro/pi-gen) (`arm64`
   branch) on GitHub's arm64 runner, using `config` and the custom stage in `stage-shulportal/`. A manual run of the
   workflow keeps the image as a workflow artifact; `scripts/check-image.sh` checks it before anything is published.
+  A build takes about 11 minutes; the image is about 820 MB compressed.
 - **Release:** `git tag v1.0.1 && git push --tags`. The workflow publishes the `.img.xz`, its `.sha256` and the Imager
   manifest as a GitHub Release.
