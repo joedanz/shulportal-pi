@@ -1,0 +1,65 @@
+# ABOUTME: Builds the ShulPortal Pi image with pi-gen on an arm64 runner and checks it.
+# ABOUTME: A v* tag publishes a GitHub Release; a manual run keeps the image as a workflow artifact.
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - id: build
+        # Pinned past v1.11.0 for the Trixie build fix (usimd/pi-gen-action#179).
+        uses: usimd/pi-gen-action@cc19b2eff5ef3b97a63a51266f061edfd3eae08b
+        with:
+          image-name: shulportal-pi
+          release: trixie
+          pi-gen-version: arm64
+          stage-list: stage0 stage1 stage2 ./stage-shulportal
+          export-last-stage-only: true
+          compression: xz
+          compression-level: 6
+          hostname: shulportal
+          locale: en_US.UTF-8
+          keyboard-keymap: us
+          keyboard-layout: English (US)
+          timezone: America/New_York
+          wpa-country: US
+          username: pi
+          disable-first-boot-user-rename: 1
+          enable-ssh: 0
+          enable-cloud-init: 1
+          increase-runner-disk-size: true
+      - id: package
+        name: Name, check and describe the image
+        env:
+          IMAGE: ${{ steps.build.outputs.image-path }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then version=$GITHUB_REF_NAME; else version=dev-${GITHUB_SHA::7}; fi
+          name=shulportal-pi-$version
+          mkdir out
+          cp "$IMAGE" "out/$name.img.xz"
+          xz -dk "out/$name.img.xz"
+          sudo scripts/check-image.sh "out/$name.img"
+          rm "out/$name.img"
+          (cd out && sha256sum "$name.img.xz" > "$name.img.xz.sha256")
+          scripts/imager-manifest.sh "out/$name.img.xz" \
+            "https://github.com/joedanz/shulportal-pi/releases/download/$version/$name.img.xz" \
+            "$(date -u +%F)" > out/shulportal-pi.rpi-imager-manifest
+          ls -l out
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ steps.package.outputs.version }}" out/* --title "ShulPortal Pi ${{ steps.package.outputs.version }}" --generate-notes
+      - if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: shulportal-pi-${{ steps.package.outputs.version }}
+          path: out/
+          compression-level: 0

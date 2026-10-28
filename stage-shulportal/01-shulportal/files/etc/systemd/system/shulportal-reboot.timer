@@ -1,0 +1,11 @@
+# ABOUTME: Restarts the Pi once a night around 4am in its own time zone.
+# ABOUTME: The time zone defaults to America/New_York; Imager's settings change it.
+[Unit]
+Description=ShulPortal nightly restart around 4am
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+RandomizedDelaySec=20min
+
+[Install]
+WantedBy=timers.target

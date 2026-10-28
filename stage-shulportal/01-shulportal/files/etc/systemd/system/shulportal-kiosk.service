@@ -2,20 +2,18 @@
 # ABOUTME: Restarted by shulportal-refresh when the TV should switch between /tv and a local page.
 [Unit]
 Description=ShulPortal kiosk
-After=systemd-user-sessions.service seatd.service network-pre.target
+After=systemd-user-sessions.service seatd.service
 Wants=seatd.service
 Conflicts=getty@tty1.service
 
 [Service]
 User=kiosk
-PAMName=login
 TTYPath=/dev/tty1
-StandardInput=tty
-StandardOutput=journal
-StandardError=journal
-UtmpIdentifier=tty1
-UtmpMode=user
+RuntimeDirectory=kiosk
+RuntimeDirectoryMode=0700
+Environment=XDG_RUNTIME_DIR=/run/kiosk
 ExecStart=/usr/bin/cage -s -- /usr/local/bin/shulportal-kiosk
+StandardError=journal
 Restart=always
 RestartSec=2
 
