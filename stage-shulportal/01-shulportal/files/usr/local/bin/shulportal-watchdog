@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# ABOUTME: Runs every minute. After 5 minutes without internet it brings the setup hotspot back:
+# ABOUTME: it drops a Wi-Fi link that has no internet, or restarts comitup if Ethernet had stopped it.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
+run=${SHULPORTAL_RUN:-/run/shulportal}
+nmcli=${SHULPORTAL_NMCLI:-nmcli}
+systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
+refresh=${SHULPORTAL_REFRESH:-/usr/local/bin/shulportal-refresh}
+now=${SHULPORTAL_NOW:-$(date +%s)}
+
+mkdir -p "$run"
+connectivity=$("$nmcli" networking connectivity check 2>/dev/null || echo unknown)
+if [ "$connectivity" = full ]; then
+  rm -f "$run/offline-since"
+elif [ ! -s "$run/offline-since" ]; then
+  echo "$now" > "$run/offline-since"
+fi
+
+since=$(cat "$run/offline-since" 2>/dev/null || true)
+state=$(cat "$run/comitup-state" 2>/dev/null || true)
+if "$systemctl" is-active --quiet comitup; then active=yes; else active=no; fi
+
+case "$(watchdog_action "$now" "$since" "$connectivity" "$state" "$active")" in
+  disconnect-wifi)
+    "$nmcli" device disconnect wlan0 || true
+    rm -f "$run/offline-since"
+    ;;
+  start-comitup)
+    "$systemctl" start comitup || true
+    rm -f "$run/offline-since"
+    ;;
+esac
+
+"$refresh"

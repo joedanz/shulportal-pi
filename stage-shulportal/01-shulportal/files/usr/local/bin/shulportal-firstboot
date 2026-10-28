@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ABOUTME: Before comitup's first start, names the setup hotspot after this Pi's serial number,
+# ABOUTME: so the TV can show ShulPortal-Setup-XXXX. Never overwrites an existing id.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
+json=${SHULPORTAL_COMITUP_JSON:-/var/lib/comitup/comitup.json}
+serial_file=${SHULPORTAL_SERIAL_FILE:-/proc/device-tree/serial-number}
+
+[ -e "$json" ] && exit 0
+mkdir -p "$(dirname "$json")"
+printf '{"id": "%s"}\n' "$(ap_id_from_serial "$(tr -d '\0' < "$serial_file" 2>/dev/null || true)")" > "$json"

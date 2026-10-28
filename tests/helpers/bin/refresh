@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for shulportal-refresh: logs that it ran, after $STUB_REFRESH_SLEEP seconds.
+# ABOUTME: Lets tests prove callers return without waiting for a refresh.
+sleep "${STUB_REFRESH_SLEEP:-0}"
+echo ran >> "$STUB_LOG/refresh.log"

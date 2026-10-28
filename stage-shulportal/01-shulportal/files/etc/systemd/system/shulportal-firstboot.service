@@ -1,0 +1,13 @@
+# ABOUTME: Names the setup hotspot after the Pi's serial before comitup first starts.
+# ABOUTME: Does nothing once /var/lib/comitup/comitup.json exists.
+[Unit]
+Description=Name the ShulPortal setup hotspot
+Before=comitup.service
+ConditionPathExists=!/var/lib/comitup/comitup.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/shulportal-firstboot
+
+[Install]
+WantedBy=multi-user.target

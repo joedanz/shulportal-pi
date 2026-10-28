@@ -1,0 +1,9 @@
+# ABOUTME: One watchdog pass: bring the setup hotspot back after 5 minutes without internet.
+# ABOUTME: Started every minute by shulportal-watchdog.timer.
+[Unit]
+Description=ShulPortal offline watchdog
+After=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/shulportal-watchdog

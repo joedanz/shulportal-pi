@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
 # ABOUTME: Test stand-in for systemctl: logs its arguments to $STUB_LOG/systemctl.log.
-# ABOUTME: nmcli also prints $STUB_CONNECTIVITY for "networking connectivity check" and $STUB_DEVICES for "device".
+# ABOUTME: "is-active" answers from $STUB_COMITUP_ACTIVE (yes means active) and is not logged.
+if [ "$1" = is-active ]; then
+  [ "${STUB_COMITUP_ACTIVE:-yes}" = yes ]
+  exit
+fi
 echo "$*" >> "$STUB_LOG/systemctl.log"

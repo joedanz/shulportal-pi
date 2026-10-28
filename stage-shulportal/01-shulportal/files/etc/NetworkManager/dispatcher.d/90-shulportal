@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# ABOUTME: NetworkManager hook: when links or internet connectivity change, stop the open setup
+# ABOUTME: hotspot while Ethernet carries the internet, then let the TV re-choose its page.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
+run=${SHULPORTAL_RUN:-/run/shulportal}
+nmcli=${SHULPORTAL_NMCLI:-nmcli}
+systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
+refresh=${SHULPORTAL_REFRESH:-/usr/local/bin/shulportal-refresh}
+
+case "${2:-}" in
+  connectivity-change | up | down) ;;
+  *) exit 0 ;;
+esac
+
+if "$nmcli" -t -f TYPE,STATE device | grep -qx 'ethernet:connected'; then wired=yes; else wired=no; fi
+connectivity=$("$nmcli" networking connectivity check 2>/dev/null || echo unknown)
+
+if [ "$(wired_should_stop_comitup "$connectivity" "$wired")" = yes ]; then
+  "$systemctl" stop comitup || true
+  rm -f "$run/comitup-state"
+fi
+
+"$refresh"

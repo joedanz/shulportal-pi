@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# ABOUTME: comitup calls this on each state change (HOTSPOT, CONNECTING or CONNECTED).
+# ABOUTME: Records the state and starts a page refresh in the background, since comitup waits for it.
+set -euo pipefail
+
+run=${SHULPORTAL_RUN:-/run/shulportal}
+refresh=${SHULPORTAL_REFRESH:-/usr/local/bin/shulportal-refresh}
+
+mkdir -p "$run"
+echo "$1" > "$run/comitup-state.tmp"
+mv "$run/comitup-state.tmp" "$run/comitup-state"
+
+if command -v setsid >/dev/null; then
+  setsid "$refresh" </dev/null >/dev/null 2>&1 3>&- &
+else
+  "$refresh" </dev/null >/dev/null 2>&1 3>&- &
+fi

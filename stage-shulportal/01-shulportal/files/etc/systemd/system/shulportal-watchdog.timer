@@ -1,0 +1,12 @@
+# ABOUTME: Runs the ShulPortal offline watchdog a minute after boot and every minute after that.
+# ABOUTME: See shulportal-watchdog for what each pass does.
+[Unit]
+Description=ShulPortal offline watchdog every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
