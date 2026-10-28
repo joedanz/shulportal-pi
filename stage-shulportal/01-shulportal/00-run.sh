@@ -7,6 +7,8 @@ cp -R --preserve=mode,timestamps files/. "${ROOTFS_DIR}/"
 
 on_chroot << 'CHROOT'
 id kiosk >/dev/null 2>&1 || useradd --create-home --shell /usr/sbin/nologin --groups video,render,input kiosk
+# No one logs in on the screen; the build-time password is thrown away and the account locked.
+passwd --lock pi
 install -d -o kiosk -g kiosk -m 700 /var/lib/shulportal /var/lib/shulportal/chromium
 # comitup runs its own dnsmasq through NetworkManager; the system ones must stay out of its way.
 systemctl mask dnsmasq.service systemd-resolved.service

@@ -1,4 +1,4 @@
-# ABOUTME: Builds the ShulPortal Pi image with pi-gen on an arm64 runner and checks it.
+# ABOUTME: Builds the ShulPortal Pi image with pi-gen (in Docker) on an arm64 runner and checks it.
 # ABOUTME: A v* tag publishes a GitHub Release; a manual run keeps the image as a workflow artifact.
 name: release
 on:
@@ -13,33 +13,21 @@ jobs:
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
-      - id: build
-        # Pinned past v1.11.0 for the Trixie build fix (usimd/pi-gen-action#179).
-        uses: usimd/pi-gen-action@cc19b2eff5ef3b97a63a51266f061edfd3eae08b
-        with:
-          image-name: shulportal-pi
-          release: trixie
-          pi-gen-version: arm64
-          stage-list: stage0 stage1 stage2 ./stage-shulportal
-          export-last-stage-only: true
-          compression: xz
-          compression-level: 6
-          hostname: shulportal
-          locale: en_US.UTF-8
-          keyboard-keymap: us
-          keyboard-layout: English (US)
-          timezone: America/New_York
-          wpa-country: US
-          username: pi
-          disable-first-boot-user-rename: 1
-          enable-ssh: 0
-          enable-cloud-init: 1
-          increase-runner-disk-size: true
+      - name: Build the image with pi-gen
+        run: |
+          git clone --depth 1 --branch arm64 https://github.com/RPi-Distro/pi-gen.git pi-gen
+          cp config pi-gen/config
+          # pi-gen needs a first-user password to skip the console rename prompt; nobody keeps it.
+          pass=$(openssl rand -base64 32)
+          echo "::add-mask::$pass"
+          printf 'FIRST_USER_PASS=%q\n' "$pass" >> pi-gen/config
+          cp -R stage-shulportal pi-gen/
+          touch pi-gen/stage2/SKIP_IMAGES
+          cd pi-gen && ./build-docker.sh
       - id: package
         name: Name, check and describe the image
-        env:
-          IMAGE: ${{ steps.build.outputs.image-path }}
         run: |
+          IMAGE=$(ls pi-gen/deploy/*.img.xz)
           if [ "$GITHUB_REF_TYPE" = tag ]; then version=$GITHUB_REF_NAME; else version=dev-${GITHUB_SHA::7}; fi
           name=shulportal-pi-$version
           mkdir out

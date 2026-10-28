@@ -1,0 +1,17 @@
+# ABOUTME: pi-gen build settings for the ShulPortal Pi image (Raspberry Pi OS Trixie Lite, arm64).
+# ABOUTME: release.yml adds a throwaway FIRST_USER_PASS; Imager's settings override hostname, Wi-Fi country and time zone.
+IMG_NAME=shulportal-pi
+RELEASE=trixie
+DEPLOY_COMPRESSION=xz
+COMPRESSION_LEVEL=6
+TARGET_HOSTNAME=shulportal
+LOCALE_DEFAULT=en_US.UTF-8
+KEYBOARD_KEYMAP=us
+KEYBOARD_LAYOUT="English (US)"
+TIMEZONE_DEFAULT=America/New_York
+WPA_COUNTRY=US
+FIRST_USER_NAME=pi
+DISABLE_FIRST_BOOT_USER_RENAME=1
+ENABLE_SSH=0
+ENABLE_CLOUD_INIT=1
+STAGE_LIST="stage0 stage1 stage2 stage-shulportal"

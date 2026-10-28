@@ -41,5 +41,7 @@ kiosk_uid=$(awk -F: '$1 == "kiosk" { print $3 }' "$mnt/etc/passwd")
 [ "$(stat -c %u "$mnt/var/lib/shulportal/chromium")" = "$kiosk_uid" ] || fail "Chromium profile is not owned by kiosk"
 [ "$(stat -c %u "$mnt/etc/NetworkManager/dispatcher.d/90-shulportal")" = 0 ] || fail "dispatcher hook is not owned by root"
 
+awk -F: '$1 == "pi" { print $2 }' "$mnt/etc/shadow" | grep -q '^!' || fail "the pi account is not locked"
+
 if [ "$failed" -ne 0 ]; then exit 1; fi
 echo "check-image: OK"
