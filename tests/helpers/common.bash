@@ -17,6 +17,8 @@ common_setup() {
   export SHULPORTAL_NMCLI="$BATS_TEST_DIRNAME/helpers/bin/nmcli"
   export SHULPORTAL_SYSTEMCTL="$BATS_TEST_DIRNAME/helpers/bin/systemctl"
   export SHULPORTAL_CHROMIUM="$BATS_TEST_DIRNAME/helpers/bin/chromium"
+  # Never reach the host's real systemd-run (CI has one); tests that want it use the stub.
+  export SHULPORTAL_SYSTEMD_RUN=shulportal-test-no-systemd-run
   mkdir -p "$SHULPORTAL_RUN"
   printf '10000000a1b2c3d4\0' > "$SHULPORTAL_SERIAL_FILE"
 }
