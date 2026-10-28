@@ -6,9 +6,15 @@ set -euo pipefail
 img=$1
 loop=$(losetup --find --partscan --show "$img")
 mnt=$(mktemp -d)
-cleanup() { umount "$mnt" 2>/dev/null || true; losetup -d "$loop"; rmdir "$mnt"; }
+cleanup() {
+  umount "$mnt/boot/firmware" 2>/dev/null || true
+  umount "$mnt" 2>/dev/null || true
+  losetup -d "$loop"
+  rmdir "$mnt"
+}
 trap cleanup EXIT
 mount -o ro "${loop}p2" "$mnt"
+mount -o ro "${loop}p1" "$mnt/boot/firmware"
 
 failed=0
 fail() { echo "FAIL: $*"; failed=1; }
@@ -18,13 +24,17 @@ absent() { [ ! -e "$mnt/$1" ] || fail "$1 should not be in the image"; }
 enabled() { [ -n "$(find "$mnt/etc/systemd/system" -path "*.wants/$1" -print -quit)" ] || fail "$1 is not enabled"; }
 masked() { [ "$(readlink "$mnt/etc/systemd/system/$1")" = /dev/null ] || fail "$1 is not masked"; }
 
-for f in usr/bin/cage usr/bin/chromium usr/bin/qrencode usr/sbin/seatd \
+for f in usr/bin/cage usr/bin/chromium usr/bin/qrencode \
   usr/local/bin/shulportal-kiosk usr/local/bin/shulportal-refresh usr/local/bin/comitup-callback \
   usr/local/bin/shulportal-watchdog usr/local/bin/shulportal-firstboot \
   etc/NetworkManager/dispatcher.d/90-shulportal; do
   executable "$f"
 done
-[ -n "$(find "$mnt/usr" -name comitup -type f -perm -u+x -print -quit)" ] || fail "comitup is not installed"
+installed() { [ -f "$mnt/var/lib/dpkg/info/$1.list" ] || fail "package $1 is not installed"; }
+
+for p in cage chromium comitup network-manager-config-connectivity-debian qrencode seatd unattended-upgrades; do
+  installed "$p"
+done
 contains etc/comitup.conf 'ShulPortal-Setup-<nnnn>'
 contains etc/comitup.conf 'external_callback: /usr/local/bin/comitup-callback'
 contains usr/local/share/shulportal/setup.html.tmpl '{{QR}}'
