@@ -10,6 +10,8 @@ profile=${SHULPORTAL_PROFILE:-/var/lib/shulportal/chromium}
 share=${SHULPORTAL_SHARE:-/usr/local/share/shulportal}
 
 mark_clean_exit "$profile/Default/Preferences"
+# A power cut leaves Chromium's single-instance locks behind; they'd point at a dead process.
+rm -f "$profile/SingletonLock" "$profile/SingletonSocket" "$profile/SingletonCookie"
 
 case "$(cat "$run/page" 2>/dev/null || true)" in
   online) url=https://shulportal.com/tv ;;

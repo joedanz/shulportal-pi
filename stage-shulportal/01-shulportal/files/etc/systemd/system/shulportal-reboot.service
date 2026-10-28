@@ -1,8 +1,9 @@
 # ABOUTME: Nightly restart, so Chromium and system updates installed during the day take effect.
-# ABOUTME: Started by shulportal-reboot.timer.
+# ABOUTME: Started by shulportal-reboot.timer; waits for a running upgrade first.
 [Unit]
 Description=ShulPortal nightly restart
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/systemctl reboot
+ExecStart=/usr/local/bin/shulportal-nightly-reboot
+TimeoutStartSec=90min

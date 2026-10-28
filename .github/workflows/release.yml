@@ -44,7 +44,14 @@ jobs:
       - if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ steps.package.outputs.version }}" out/* --title "ShulPortal Pi ${{ steps.package.outputs.version }}" --generate-notes
+        run: |
+          version=${{ steps.package.outputs.version }}
+          # A re-run of the same tag replaces the files instead of failing.
+          if gh release view "$version" >/dev/null 2>&1; then
+            gh release upload "$version" out/* --clobber
+          else
+            gh release create "$version" out/* --title "ShulPortal Pi $version" --generate-notes
+          fi
       - if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v4
         with:

@@ -22,7 +22,9 @@ fi
 since=$(cat "$run/offline-since" 2>/dev/null || true)
 if "$systemctl" is-active --quiet comitup; then active=yes; else active=no; fi
 
-if [ "$(watchdog_action "$now" "$since" "$connectivity" "$active")" = start-comitup ]; then
+wired=$("$nmcli" -t -f TYPE,STATE device 2>/dev/null | wired_up)
+
+if [ "$(watchdog_action "$now" "$since" "$connectivity" "$active" "$wired")" = start-comitup ]; then
   "$systemctl" start comitup || true
 fi
 

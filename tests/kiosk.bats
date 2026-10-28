@@ -102,6 +102,17 @@ setup() {
   grep -q '"exit_type":"Normal"' "$SHULPORTAL_PROFILE/Default/Preferences"
 }
 
+@test "kiosk clears Chromium's profile locks left by a power cut" {
+  mkdir -p "$SHULPORTAL_PROFILE"
+  ln -s shulportal-12345 "$SHULPORTAL_PROFILE/SingletonLock"
+  ln -s /tmp/gone "$SHULPORTAL_PROFILE/SingletonSocket"
+  touch "$SHULPORTAL_PROFILE/SingletonCookie"
+  "$SHULPORTAL_BIN/shulportal-kiosk"
+  [ ! -L "$SHULPORTAL_PROFILE/SingletonLock" ]
+  [ ! -e "$SHULPORTAL_PROFILE/SingletonSocket" ] && [ ! -L "$SHULPORTAL_PROFILE/SingletonSocket" ]
+  [ ! -e "$SHULPORTAL_PROFILE/SingletonCookie" ]
+}
+
 @test "kiosk launches connecting page by default" {
   run "$SHULPORTAL_BIN/shulportal-kiosk"
   [[ $(logged chromium) == *"connecting.html"* ]] || false

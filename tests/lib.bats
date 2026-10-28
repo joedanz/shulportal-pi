@@ -53,17 +53,21 @@ setup() {
 }
 
 @test "watchdog_action does nothing while online or under 300s offline" {
-  run watchdog_action 1000 "" full no;   [ "$output" = "none" ]
-  run watchdog_action 1299 1000 none no; [ "$output" = "none" ]
+  run watchdog_action 1000 "" full no no;   [ "$output" = "none" ]
+  run watchdog_action 1299 1000 none no no; [ "$output" = "none" ]
 }
 
 @test "watchdog_action never touches a running comitup" {
-  run watchdog_action 1300 1000 none yes;    [ "$output" = "none" ]
-  run watchdog_action 9000 1000 limited yes; [ "$output" = "none" ]
+  run watchdog_action 1300 1000 none yes no;    [ "$output" = "none" ]
+  run watchdog_action 9000 1000 limited yes no; [ "$output" = "none" ]
 }
 
-@test "watchdog_action starts comitup after 300s offline when it was stopped" {
-  run watchdog_action 1300 1000 none no; [ "$output" = "start-comitup" ]
+@test "watchdog_action starts comitup after 300s offline once Ethernet is unplugged" {
+  run watchdog_action 1300 1000 none no no; [ "$output" = "start-comitup" ]
+}
+
+@test "watchdog_action leaves comitup off while Ethernet is plugged in and the ISP is down" {
+  run watchdog_action 9000 1000 none no yes; [ "$output" = "none" ]
 }
 
 @test "active_hotspot finds the setup hotspot among active connections" {

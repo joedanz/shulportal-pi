@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for systemd-run: logs its arguments to $STUB_LOG/systemd-run.log.
+# ABOUTME: Does not run the command, so tests can tell it was handed off rather than run inline.
+echo "$*" >> "$STUB_LOG/systemd-run.log"

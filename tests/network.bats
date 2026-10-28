@@ -12,6 +12,40 @@ setup() {
 
 dispatcher() { "$BATS_TEST_DIRNAME/../stage-shulportal/01-shulportal/files/etc/NetworkManager/dispatcher.d/90-shulportal" "$@"; }
 
+@test "callback hands the refresh to systemd so stopping comitup can't kill it" {
+  export SHULPORTAL_SYSTEMD_RUN="$BATS_TEST_DIRNAME/helpers/bin/systemd-run"
+  "$SHULPORTAL_BIN/comitup-callback" HOTSPOT
+  [[ $(logged systemd-run) == *"--no-block"*"$SHULPORTAL_REFRESH"* ]] || false
+  [ -z "$(logged refresh)" ]
+}
+
+@test "watchdog leaves comitup off while Ethernet is plugged in" {
+  export STUB_CONNECTIVITY=none SHULPORTAL_NOW=9000 STUB_COMITUP_ACTIVE=no STUB_DEVICES=ethernet:connected
+  echo 1000 > "$SHULPORTAL_RUN/offline-since"
+  "$SHULPORTAL_BIN/shulportal-watchdog"
+  [ -z "$(logged systemctl)" ]
+}
+
+@test "nightly reboot goes ahead when no upgrade is running" {
+  run "$SHULPORTAL_BIN/shulportal-nightly-reboot"
+  [ "$status" -eq 0 ]
+  [ "$(logged systemctl)" = reboot ]
+}
+
+@test "nightly reboot waits for a running upgrade, but not forever" {
+  export STUB_ACTIVE_UNITS=apt-daily-upgrade.service SHULPORTAL_REBOOT_WAIT_SECS=0 SHULPORTAL_REBOOT_MAX_WAITS=3
+  run "$SHULPORTAL_BIN/shulportal-nightly-reboot"
+  [ "$status" -eq 0 ]
+  [ "$(logged systemctl)" = reboot ]
+  [[ $output == *"waited for apt-daily-upgrade"* ]] || false
+}
+
+@test "updates install shortly before the nightly reboot" {
+  grep -qx 'OnCalendar=\*-\*-\* 03:15:00' "$FILES/etc/systemd/system/apt-daily-upgrade.timer.d/shulportal.conf"
+  grep -qx 'OnCalendar=' "$FILES/etc/systemd/system/apt-daily-upgrade.timer.d/shulportal.conf"
+  grep -qx 'ExecStart=/usr/local/bin/shulportal-nightly-reboot' "$FILES/etc/systemd/system/shulportal-reboot.service"
+}
+
 @test "callback returns at once" {
   export STUB_REFRESH_SLEEP=3
   start=$SECONDS

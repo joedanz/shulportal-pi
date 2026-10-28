@@ -44,12 +44,13 @@ choose_page() {
   fi
 }
 
-# watchdog_action NOW OFFLINE_SINCE CONNECTIVITY COMITUP_ACTIVE: none or start-comitup.
+# watchdog_action NOW OFFLINE_SINCE CONNECTIVITY COMITUP_ACTIVE WIRED_UP: none or start-comitup.
 # comitup brings its own hotspot up when saved Wi-Fi fails; this only restarts it after
-# Ethernet had it stopped and the internet has then been gone for 5 minutes.
+# Ethernet had it stopped, Ethernet is now unplugged, and the internet has been gone 5 minutes.
+# (Plugged-in Ethernet with the ISP down needs no Wi-Fi setup page.)
 watchdog_action() {
-  local now=$1 since=$2 connectivity=$3 active=$4
-  if [ "$connectivity" != full ] && [ -n "$since" ] && [ "$active" != yes ] &&
+  local now=$1 since=$2 connectivity=$3 active=$4 wired=$5
+  if [ "$connectivity" != full ] && [ -n "$since" ] && [ "$active" != yes ] && [ "$wired" != yes ] &&
     [ $((now - since)) -ge "$SHULPORTAL_OFFLINE_SECS" ]; then
     echo start-comitup
   else
@@ -65,6 +66,16 @@ active_hotspot() {
     case $name in ShulPortal-Setup-*) printf '%s\n' "$name"; return 0 ;; esac
   done
   return 0
+}
+
+# wired_up: reads "TYPE:STATE" lines from "nmcli -t -f TYPE,STATE device" on stdin and prints
+# yes when an Ethernet device is connected, otherwise no.
+wired_up() {
+  local line
+  while IFS= read -r line; do
+    if [ "$line" = ethernet:connected ]; then echo yes; return 0; fi
+  done
+  echo no
 }
 
 # wired_should_stop_comitup CONNECTIVITY WIRED_UP: yes when Ethernet carries the internet,

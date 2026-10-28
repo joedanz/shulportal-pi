@@ -24,7 +24,8 @@ absent() { [ ! -e "$mnt/$1" ] || fail "$1 should not be in the image"; }
 enabled() { [ -n "$(find "$mnt/etc/systemd/system" -path "*.wants/$1" -print -quit)" ] || fail "$1 is not enabled"; }
 masked() { [ "$(readlink "$mnt/etc/systemd/system/$1")" = /dev/null ] || fail "$1 is not masked"; }
 
-for f in usr/bin/cage usr/bin/chromium usr/bin/qrencode \
+for f in usr/bin/cage usr/bin/chromium usr/bin/qrencode usr/sbin/dnsmasq \
+  usr/local/bin/shulportal-nightly-reboot \
   usr/local/bin/shulportal-kiosk usr/local/bin/shulportal-refresh usr/local/bin/comitup-callback \
   usr/local/bin/shulportal-watchdog usr/local/bin/shulportal-firstboot \
   etc/NetworkManager/dispatcher.d/90-shulportal; do
@@ -45,6 +46,11 @@ for u in seatd.service shulportal-kiosk.service shulportal-firstboot.service \
   enabled "$u"
 done
 masked dnsmasq.service
+# comitup runs its own dnsmasq; with systemd-resolved masked, a stub resolv.conf would break DNS.
+if [ -L "$mnt/etc/resolv.conf" ] && [[ $(readlink "$mnt/etc/resolv.conf") == *systemd/resolve* ]]; then
+  fail "etc/resolv.conf points at systemd-resolved, which is masked"
+fi
+contains etc/systemd/system/apt-daily-upgrade.timer.d/shulportal.conf '03:15'
 
 kiosk_uid=$(awk -F: '$1 == "kiosk" { print $3 }' "$mnt/etc/passwd")
 [ -n "$kiosk_uid" ] || fail "no kiosk user"

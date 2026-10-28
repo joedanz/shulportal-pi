@@ -14,7 +14,7 @@ case "${2:-}" in
   *) exit 0 ;;
 esac
 
-if "$nmcli" -t -f TYPE,STATE device | grep -qx 'ethernet:connected'; then wired=yes; else wired=no; fi
+wired=$("$nmcli" -t -f TYPE,STATE device | wired_up)
 connectivity=$("$nmcli" networking connectivity check 2>/dev/null || echo unknown)
 
 if [ "$(wired_should_stop_comitup "$connectivity" "$wired")" = yes ]; then

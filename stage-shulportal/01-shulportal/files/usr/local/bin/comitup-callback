@@ -5,8 +5,11 @@ set -euo pipefail
 
 refresh=${SHULPORTAL_REFRESH:-/usr/local/bin/shulportal-refresh}
 
-if command -v setsid >/dev/null; then
-  setsid "$refresh" </dev/null >/dev/null 2>&1 3>&- &
+systemd_run=${SHULPORTAL_SYSTEMD_RUN:-systemd-run}
+# Run the refresh as its own transient unit, outside comitup's control group, so stopping
+# comitup (Ethernet came up) can't kill it halfway through switching the page.
+if command -v "$systemd_run" >/dev/null; then
+  "$systemd_run" --no-block --collect --quiet "$refresh"
 else
   "$refresh" </dev/null >/dev/null 2>&1 3>&- &
 fi

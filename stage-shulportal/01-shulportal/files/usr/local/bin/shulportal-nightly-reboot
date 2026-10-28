@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# ABOUTME: The nightly restart: waits (up to an hour) while the day's package upgrade is still running,
+# ABOUTME: so a restart never lands in the middle of installing Chromium or system updates.
+set -euo pipefail
+
+systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
+wait_secs=${SHULPORTAL_REBOOT_WAIT_SECS:-30}
+max_waits=${SHULPORTAL_REBOOT_MAX_WAITS:-120}
+
+waits=0
+while [ "$waits" -lt "$max_waits" ] &&
+  { "$systemctl" is-active --quiet apt-daily-upgrade.service || "$systemctl" is-active --quiet apt-daily.service; }; do
+  waits=$((waits + 1))
+  sleep "$wait_secs"
+done
+if [ "$waits" -gt 0 ]; then echo "waited for apt-daily-upgrade ($waits checks)"; fi
+
+"$systemctl" reboot

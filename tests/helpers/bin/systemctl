@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # ABOUTME: Test stand-in for systemctl: logs its arguments to $STUB_LOG/systemctl.log.
-# ABOUTME: "is-active" answers from $STUB_COMITUP_ACTIVE (yes means active) and is not logged.
+# ABOUTME: "is-active --quiet UNIT" is not logged: comitup answers from $STUB_COMITUP_ACTIVE, others from $STUB_ACTIVE_UNITS.
 if [ "$1" = is-active ]; then
-  [ "${STUB_COMITUP_ACTIVE:-yes}" = yes ]
-  exit
+  unit=${*: -1}
+  if [ "$unit" = comitup ]; then [ "${STUB_COMITUP_ACTIVE:-yes}" = yes ]; exit; fi
+  case " ${STUB_ACTIVE_UNITS:-} " in *" $unit "*) exit 0 ;; *) exit 3 ;; esac
 fi
 echo "$*" >> "$STUB_LOG/systemctl.log"
