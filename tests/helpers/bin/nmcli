@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for nmcli: logs its arguments to $STUB_LOG/nmcli.log.
+# ABOUTME: nmcli also prints $STUB_CONNECTIVITY for "networking connectivity check" and $STUB_DEVICES for "device".
+echo "$*" >> "$STUB_LOG/nmcli.log"
+case "$*" in
+  "networking connectivity check") echo "${STUB_CONNECTIVITY:-none}" ;;
+  *device*) printf '%s\n' "${STUB_DEVICES:-}" ;;
+esac

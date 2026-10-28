@@ -63,3 +63,30 @@ watchdog_action() {
 wired_should_stop_comitup() {
   if [ "$1" = full ] && [ "$2" = yes ]; then echo yes; else echo no; fi
 }
+
+# setup_ssid ID: the setup hotspot's name for comitup id ID (see etc/comitup.conf ap_name).
+setup_ssid() {
+  printf 'ShulPortal-Setup-%s\n' "$1"
+}
+
+# mark_clean_exit PREFS_FILE: tell Chromium its last run ended cleanly, so a power cut
+# never brings up the "restore pages" bubble. A missing file is left alone.
+mark_clean_exit() {
+  local f=$1
+  [ -f "$f" ] || return 0
+  sed -e 's/"exit_type":"[^"]*"/"exit_type":"Normal"/' \
+      -e 's/"exited_cleanly":false/"exited_cleanly":true/' "$f" > "$f.tmp"
+  mv "$f.tmp" "$f"
+}
+
+# render_setup_page TEMPLATE OUT SSID: the TV's "connect your phone" page, with an
+# inline QR code that joins the open setup hotspot.
+render_setup_page() {
+  local template=$1 out=$2 ssid=$3 page qr
+  qr=$(qrencode -t SVG -m 2 -o - "$(wifi_qr_payload "$ssid")")
+  page=$(<"$template")
+  page=${page//'{{SSID}}'/"$ssid"}
+  page=${page//'{{QR}}'/"$qr"}
+  printf '%s\n' "$page" > "$out.tmp"
+  mv "$out.tmp" "$out"
+}

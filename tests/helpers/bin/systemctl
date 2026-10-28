@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for systemctl: logs its arguments to $STUB_LOG/systemctl.log.
+# ABOUTME: nmcli also prints $STUB_CONNECTIVITY for "networking connectivity check" and $STUB_DEVICES for "device".
+echo "$*" >> "$STUB_LOG/systemctl.log"

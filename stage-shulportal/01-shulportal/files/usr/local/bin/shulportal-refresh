@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# ABOUTME: Re-chooses what the TV shows from internet connectivity and comitup's state, renders
+# ABOUTME: the setup page, and restarts the kiosk only when the page actually changes.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
+run=${SHULPORTAL_RUN:-/run/shulportal}
+share=${SHULPORTAL_SHARE:-/usr/local/share/shulportal}
+nmcli=${SHULPORTAL_NMCLI:-nmcli}
+systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
+serial_file=${SHULPORTAL_SERIAL_FILE:-/proc/device-tree/serial-number}
+comitup_json=${SHULPORTAL_COMITUP_JSON:-/var/lib/comitup/comitup.json}
+
+mkdir -p "$run"
+# Callers (comitup, NetworkManager, the watchdog) can fire together; take turns.
+exec 9>"$run/refresh.lock"
+if command -v flock >/dev/null; then flock 9; fi
+
+# The name comitup really broadcasts comes from its id; before first boot writes it, use the serial.
+hotspot_id() {
+  local id
+  id=$(sed -n 's/.*"id": *"\([^"]*\)".*/\1/p' "$comitup_json" 2>/dev/null || true)
+  if [ -n "$id" ]; then echo "$id"; else ap_id_from_serial "$(tr -d '\0' < "$serial_file" 2>/dev/null || true)"; fi
+}
+
+connectivity=$("$nmcli" networking connectivity check 2>/dev/null || echo unknown)
+state=$(cat "$run/comitup-state" 2>/dev/null || true)
+current=$(cat "$run/page" 2>/dev/null || true)
+page=$(choose_page "$connectivity" "$state" "$current")
+
+if [ "$page" = setup ]; then
+  render_setup_page "$share/setup.html.tmpl" "$run/setup.html" "$(setup_ssid "$(hotspot_id)")"
+fi
+if [ "$page" != "$current" ]; then
+  echo "$page" > "$run/page"
+  "$systemctl" restart shulportal-kiosk
+fi

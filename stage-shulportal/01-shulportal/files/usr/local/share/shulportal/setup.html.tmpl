@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- ABOUTME: The TV's offline setup page: join the setup hotspot from a phone, then pick Wi-Fi. -->
+<!-- ABOUTME: shulportal-refresh fills in the hotspot name and an inline SVG Wi-Fi join code. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ShulPortal setup</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b1f3a; color: #fff; font-family: system-ui, sans-serif; cursor: none; }
+  main { height: 100%; display: flex; align-items: center; justify-content: center; gap: 6vw; padding: 0 6vw; box-sizing: border-box; }
+  .qr { background: #fff; padding: 1.5vw; border-radius: 1vw; width: 28vw; flex-shrink: 0; }
+  .qr svg { display: block; width: 100%; height: auto; }
+  h1 { font-size: 4.5vw; margin: 0 0 1vw; font-weight: 600; }
+  .ssid { font-size: 3.6vw; font-weight: 700; color: #e3b341; margin: 0 0 3vw; white-space: nowrap; }
+  p { font-size: 2.6vw; line-height: 1.4; margin: 0; max-width: 45vw; }
+</style>
+</head>
+<body>
+<main>
+  <div class="qr">{{QR}}</div>
+  <div>
+    <h1>Connect your phone to Wi-Fi</h1>
+    <p class="ssid">{{SSID}}</p>
+    <p>Then pick the shul's Wi-Fi on the page that opens and enter its password.</p>
+  </div>
+</main>
+</body>
+</html>
