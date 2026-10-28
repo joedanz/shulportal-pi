@@ -9,7 +9,7 @@ SHULPORTAL_OFFLINE_SECS=${SHULPORTAL_OFFLINE_SECS:-300}
 ap_id_from_serial() {
   local tail=${1: -4}
   if [ ${#1} -ge 4 ] && [[ $tail =~ ^[0-9a-fA-F]{4}$ ]]; then
-    printf '%s\n' "${tail^^}"
+    printf '%s\n' "$tail" | tr '[:lower:]' '[:upper:]'
   else
     printf '0000\n'
   fi
@@ -17,13 +17,15 @@ ap_id_from_serial() {
 
 # wifi_qr_payload SSID: the QR text a phone camera reads as "join this open network".
 wifi_qr_payload() {
-  local s=$1
-  s=${s//\\/\\\\}
-  s=${s//;/\;}
-  s=${s//,/\\,}
-  s=${s//:/\\:}
-  s=${s//\"/\\\"}
-  printf 'WIFI:T:nopass;S:%s;;\n' "$s"
+  local s=$1 out='' c i
+  for ((i = 0; i < ${#s}; i++)); do
+    c=${s:i:1}
+    case $c in
+      \\ | ';' | ',' | ':' | '"') out+="\\$c" ;;
+      *) out+=$c ;;
+    esac
+  done
+  printf 'WIFI:T:nopass;S:%s;;\n' "$out"
 }
 
 # choose_page CONNECTIVITY COMITUP_STATE CURRENT: online, setup or connecting.
