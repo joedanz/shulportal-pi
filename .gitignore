@@ -1,0 +1,5 @@
+.superpowers/
+deploy/
+work/
+*.img
+*.img.xz

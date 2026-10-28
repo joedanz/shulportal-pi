@@ -1,0 +1,17 @@
+# ABOUTME: Lints every shell script with shellcheck and runs the bats tests on each push and PR.
+# ABOUTME: The image itself is built by release.yml.
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y bats shellcheck qrencode jq xz-utils
+      - name: shellcheck
+        run: |
+          files=$(find stage-shulportal -path '*/files/*' -type f \( -path '*/bin/*' -o -path '*/lib/shulportal/*' -o -path '*/dispatcher.d/*' \); find scripts -type f -name '*.sh' 2>/dev/null; find stage-shulportal -name '*.sh')
+          shellcheck $files
+      - run: bats tests/

@@ -1,0 +1,12 @@
+# ABOUTME: pi-gen build settings for the ShulPortal Pi image (Raspberry Pi OS Trixie Lite, arm64).
+# ABOUTME: Imager's OS customisation overrides the hostname, Wi-Fi country and time zone set here.
+IMG_NAME=shulportal-pi
+RELEASE=trixie
+TARGET_HOSTNAME=shulportal
+WPA_COUNTRY=US
+TIMEZONE_DEFAULT=America/New_York
+LOCALE_DEFAULT=en_US.UTF-8
+KEYBOARD_KEYMAP=us
+KEYBOARD_LAYOUT="English (US)"
+ENABLE_SSH=0
+STAGE_LIST="stage0 stage1 stage2 stage-shulportal"
