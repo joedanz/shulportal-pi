@@ -5,6 +5,8 @@ Description=ShulPortal kiosk
 After=systemd-user-sessions.service seatd.service
 Wants=seatd.service
 Conflicts=getty@tty1.service
+# Page switches and fast failures (seat or display not ready yet) must never park it.
+StartLimitIntervalSec=0
 
 [Service]
 User=kiosk

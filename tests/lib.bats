@@ -29,43 +29,47 @@ setup() {
 }
 
 @test "choose_page shows ShulPortal whenever the internet is up" {
-  run choose_page full HOTSPOT setup; [ "$output" = "online" ]
-  run choose_page full "" "";         [ "$output" = "online" ]
+  run choose_page full yes setup 900; [ "$output" = "online" ]
+  run choose_page full no "" 0;       [ "$output" = "online" ]
 }
 
-@test "choose_page shows setup when the hotspot is up and the internet is not" {
-  run choose_page none HOTSPOT online;        [ "$output" = "setup" ]
-  run choose_page limited HOTSPOT connecting; [ "$output" = "setup" ]
+@test "choose_page shows setup when the hotspot is on the air and the internet is not" {
+  run choose_page none yes connecting 0;  [ "$output" = "setup" ]
+  run choose_page limited yes "" 0;       [ "$output" = "setup" ]
 }
 
-@test "choose_page keeps the current page through a short network blip" {
-  run choose_page none CONNECTING online; [ "$output" = "online" ]
-  run choose_page none CONNECTED online;  [ "$output" = "online" ]
-  run choose_page none CONNECTING setup;  [ "$output" = "setup" ]
+@test "choose_page keeps a showing display through 5 minutes offline, then shows setup" {
+  run choose_page none yes online 299; [ "$output" = "online" ]
+  run choose_page none yes online 300; [ "$output" = "setup" ]
+}
+
+@test "choose_page ignores comitup saying HOTSPOT when no hotspot is up" {
+  run choose_page none no online 900; [ "$output" = "online" ]
+  run choose_page none no setup 900;  [ "$output" = "setup" ]
 }
 
 @test "choose_page shows connecting before anything is known" {
-  run choose_page none "" "";         [ "$output" = "connecting" ]
-  run choose_page none CONNECTING ""; [ "$output" = "connecting" ]
+  run choose_page none no "" 0; [ "$output" = "connecting" ]
 }
 
 @test "watchdog_action does nothing while online or under 300s offline" {
-  run watchdog_action 1000 "" full CONNECTED yes;    [ "$output" = "none" ]
-  run watchdog_action 1299 1000 none CONNECTED yes;  [ "$output" = "none" ]
-  run watchdog_action 1299 1000 none "" no;          [ "$output" = "none" ]
+  run watchdog_action 1000 "" full no;   [ "$output" = "none" ]
+  run watchdog_action 1299 1000 none no; [ "$output" = "none" ]
 }
 
-@test "watchdog_action drops Wi-Fi after 300s with Wi-Fi up but no internet" {
-  run watchdog_action 1300 1000 none CONNECTED yes;    [ "$output" = "disconnect-wifi" ]
-  run watchdog_action 1300 1000 limited CONNECTED yes; [ "$output" = "disconnect-wifi" ]
-}
-
-@test "watchdog_action leaves an already-running hotspot alone" {
-  run watchdog_action 1300 1000 none HOTSPOT yes; [ "$output" = "none" ]
+@test "watchdog_action never touches a running comitup" {
+  run watchdog_action 1300 1000 none yes;    [ "$output" = "none" ]
+  run watchdog_action 9000 1000 limited yes; [ "$output" = "none" ]
 }
 
 @test "watchdog_action starts comitup after 300s offline when it was stopped" {
-  run watchdog_action 1300 1000 none "" no; [ "$output" = "start-comitup" ]
+  run watchdog_action 1300 1000 none no; [ "$output" = "start-comitup" ]
+}
+
+@test "active_hotspot finds the setup hotspot among active connections" {
+  run active_hotspot <<< $'Wired connection 1\nShulPortal-Setup-C3D4-9f2a'; [ "$output" = "ShulPortal-Setup-C3D4-9f2a" ]
+  run active_hotspot <<< $'Wired connection 1\nShul Office'; [ -z "$output" ]
+  run active_hotspot < /dev/null; [ -z "$output" ]
 }
 
 @test "wired_should_stop_comitup only when Ethernet is up with full internet" {

@@ -32,7 +32,7 @@ for f in usr/bin/cage usr/bin/chromium usr/bin/qrencode \
 done
 installed() { [ -f "$mnt/var/lib/dpkg/info/$1.list" ] || fail "package $1 is not installed"; }
 
-for p in cage chromium comitup network-manager-config-connectivity-debian qrencode seatd unattended-upgrades; do
+for p in cage chromium comitup qrencode seatd unattended-upgrades; do
   installed "$p"
 done
 contains etc/comitup.conf 'ShulPortal-Setup-<nnnn>'

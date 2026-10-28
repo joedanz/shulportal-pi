@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# ABOUTME: Runs every minute. After 5 minutes without internet it brings the setup hotspot back:
-# ABOUTME: it drops a Wi-Fi link that has no internet, or restarts comitup if Ethernet had stopped it.
+# ABOUTME: Runs every minute: tracks how long the internet has been gone, restarts comitup after 5 minutes
+# ABOUTME: if Ethernet had stopped it, and lets the TV re-choose its page.
 set -euo pipefail
 
 # shellcheck source=/dev/null
@@ -20,18 +20,10 @@ elif [ ! -s "$run/offline-since" ]; then
 fi
 
 since=$(cat "$run/offline-since" 2>/dev/null || true)
-state=$(cat "$run/comitup-state" 2>/dev/null || true)
 if "$systemctl" is-active --quiet comitup; then active=yes; else active=no; fi
 
-case "$(watchdog_action "$now" "$since" "$connectivity" "$state" "$active")" in
-  disconnect-wifi)
-    "$nmcli" device disconnect wlan0 || true
-    rm -f "$run/offline-since"
-    ;;
-  start-comitup)
-    "$systemctl" start comitup || true
-    rm -f "$run/offline-since"
-    ;;
-esac
+if [ "$(watchdog_action "$now" "$since" "$connectivity" "$active")" = start-comitup ]; then
+  "$systemctl" start comitup || true
+fi
 
 "$refresh"

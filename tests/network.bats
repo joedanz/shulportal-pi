@@ -12,13 +12,12 @@ setup() {
 
 dispatcher() { "$BATS_TEST_DIRNAME/../stage-shulportal/01-shulportal/files/etc/NetworkManager/dispatcher.d/90-shulportal" "$@"; }
 
-@test "callback writes state and returns at once" {
+@test "callback returns at once" {
   export STUB_REFRESH_SLEEP=3
   start=$SECONDS
   run "$SHULPORTAL_BIN/comitup-callback" HOTSPOT
   [ "$status" -eq 0 ]
   [ $((SECONDS - start)) -lt 2 ]
-  [ "$(cat "$SHULPORTAL_RUN/comitup-state")" = HOTSPOT ]
 }
 
 @test "callback triggers a refresh" {
@@ -44,27 +43,25 @@ dispatcher() { "$BATS_TEST_DIRNAME/../stage-shulportal/01-shulportal/files/etc/N
 @test "watchdog keeps the first offline time while still offline" {
   export STUB_CONNECTIVITY=none
   echo 900 > "$SHULPORTAL_RUN/offline-since"
-  echo CONNECTED > "$SHULPORTAL_RUN/comitup-state"
   "$SHULPORTAL_BIN/shulportal-watchdog"
   [ "$(cat "$SHULPORTAL_RUN/offline-since")" = 900 ]
-  [ -z "$(logged nmcli | grep disconnect || true)" ]
 }
 
-@test "watchdog disconnects wifi after 300s offline on CONNECTED" {
-  export STUB_CONNECTIVITY=none SHULPORTAL_NOW=1300
+@test "watchdog never drops a Wi-Fi link that has no internet" {
+  export STUB_CONNECTIVITY=none SHULPORTAL_NOW=9000
   echo 1000 > "$SHULPORTAL_RUN/offline-since"
-  echo CONNECTED > "$SHULPORTAL_RUN/comitup-state"
   "$SHULPORTAL_BIN/shulportal-watchdog"
-  [[ $(logged nmcli) == *"device disconnect wlan0"* ]]
-  [ ! -e "$SHULPORTAL_RUN/offline-since" ]
+  [[ $(logged nmcli) != *disconnect* ]] || false
+  [ -z "$(logged systemctl)" ]
 }
 
 @test "watchdog starts comitup when it was stopped and wired is gone" {
   export STUB_CONNECTIVITY=none SHULPORTAL_NOW=1300 STUB_COMITUP_ACTIVE=no
   echo 1000 > "$SHULPORTAL_RUN/offline-since"
   "$SHULPORTAL_BIN/shulportal-watchdog"
-  [[ $(logged systemctl) == *"start comitup"* ]]
-  [ ! -e "$SHULPORTAL_RUN/offline-since" ]
+  [[ $(logged systemctl) == *"start comitup"* ]] || false
+  # Still offline since 1000: the display gives way to setup once the hotspot is up.
+  [ "$(cat "$SHULPORTAL_RUN/offline-since")" = 1000 ]
 }
 
 @test "firstboot writes id from serial once" {
@@ -75,12 +72,11 @@ dispatcher() { "$BATS_TEST_DIRNAME/../stage-shulportal/01-shulportal/files/etc/N
   grep -q '"id": *"C3D4"' "$SHULPORTAL_COMITUP_JSON"
 }
 
-@test "dispatcher stops comitup on wired internet" {
-  export STUB_CONNECTIVITY=full STUB_DEVICES=$'ethernet:connected\nwifi:disconnected'
-  echo HOTSPOT > "$SHULPORTAL_RUN/comitup-state"
+@test "dispatcher stops comitup and takes its hotspot off the air on wired internet" {
+  export STUB_CONNECTIVITY=full STUB_DEVICES=$'ethernet:connected\nwifi:connected' STUB_ACTIVE=$'Wired connection 1\nShulPortal-Setup-C3D4-9f2a'
   dispatcher eth0 connectivity-change
-  [[ $(logged systemctl) == *"stop comitup"* ]]
-  [ ! -e "$SHULPORTAL_RUN/comitup-state" ]
+  [[ $(logged systemctl) == *"stop comitup"* ]] || false
+  [[ $(logged nmcli) == *"connection down id ShulPortal-Setup-C3D4-9f2a"* ]] || false
   [ "$(logged refresh)" = ran ]
 }
 

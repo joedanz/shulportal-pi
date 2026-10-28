@@ -5,7 +5,6 @@ set -euo pipefail
 
 # shellcheck source=/dev/null
 source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
-run=${SHULPORTAL_RUN:-/run/shulportal}
 nmcli=${SHULPORTAL_NMCLI:-nmcli}
 systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
 refresh=${SHULPORTAL_REFRESH:-/usr/local/bin/shulportal-refresh}
@@ -20,7 +19,9 @@ connectivity=$("$nmcli" networking connectivity check 2>/dev/null || echo unknow
 
 if [ "$(wired_should_stop_comitup "$connectivity" "$wired")" = yes ]; then
   "$systemctl" stop comitup || true
-  rm -f "$run/comitup-state"
+  # comitup leaves its network as it is when stopped; take the open hotspot off the air.
+  hotspot=$("$nmcli" -t -f NAME connection show --active | active_hotspot)
+  if [ -n "$hotspot" ]; then "$nmcli" connection down id "$hotspot" || true; fi
 fi
 
 "$refresh"

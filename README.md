@@ -19,8 +19,8 @@ of your shul's signs from ShulPortal, and the screen shows that sign from then o
 3. **Link it:** scan the QR code on the TV with your phone, or type the code into **Digital Signage → Set up a screen** in
    ShulPortal, and choose which sign it shows.
 
-If the shul's Wi-Fi changes, the Pi brings the `ShulPortal-Setup-XXXX` network back after about 5 minutes without internet.
-Set the new Wi-Fi the same way; no keyboard or re-flash needed.
+If the shul's Wi-Fi changes (new router or password), the Pi brings the `ShulPortal-Setup-XXXX` network back. Set the new
+Wi-Fi the same way; no keyboard or re-flash needed.
 
 To link a screen to a different sign, open ShulPortal on a phone, rotate that sign's key, and the TV shows a new code.
 
@@ -28,8 +28,11 @@ To link a screen to a different sign, open ShulPortal on a phone, rotate that si
 
 - Raspberry Pi OS Lite (Trixie, 64-bit), with Chromium full screen in the `cage` compositor. No desktop, no cursor, no
   screen blanking, no "restore pages" bubble.
-- [comitup](https://github.com/davesteele/comitup) for the setup hotspot. A small watchdog brings it back when the Pi is
-  online on Wi-Fi without internet, and it stays off while Ethernet works.
+- [comitup](https://github.com/davesteele/comitup) for the setup hotspot. It comes up whenever saved Wi-Fi can't connect
+  (new router, changed password) and stays off while Ethernet works. A showing sign keeps its last content for 5 minutes
+  without internet before the TV switches to the setup page.
+- The Pi counts itself online when it can reach `shulportal.com/pi-connectivity.txt`, so content filters that block
+  generic check URLs don't matter.
 - Security updates install every day (Debian security and Raspberry Pi's archive, which carries Chromium), and the Pi
   restarts around 4am in its time zone (America/New_York unless set in Imager).
 - No login: SSH is off and the default account is locked.

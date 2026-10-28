@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ABOUTME: Re-chooses what the TV shows from internet connectivity and comitup's state, renders
+# ABOUTME: Re-chooses what the TV shows from internet connectivity and the setup hotspot, renders
 # ABOUTME: the setup page, and restarts the kiosk only when the page actually changes.
 set -euo pipefail
 
@@ -25,9 +25,12 @@ hotspot_id() {
 }
 
 connectivity=$("$nmcli" networking connectivity check 2>/dev/null || echo unknown)
-state=$(cat "$run/comitup-state" 2>/dev/null || true)
+if [ -n "$("$nmcli" -t -f NAME connection show --active 2>/dev/null | active_hotspot)" ]; then hotspot_up=yes; else hotspot_up=no; fi
 current=$(cat "$run/page" 2>/dev/null || true)
-page=$(choose_page "$connectivity" "$state" "$current")
+since=$(cat "$run/offline-since" 2>/dev/null || true)
+offline_secs=0
+if [ -n "$since" ]; then offline_secs=$(( ${SHULPORTAL_NOW:-$(date +%s)} - since )); fi
+page=$(choose_page "$connectivity" "$hotspot_up" "$current" "$offline_secs")
 
 if [ "$page" = setup ]; then
   render_setup_page "$share/setup.html.tmpl" "$run/setup.html" "$(setup_ssid "$(hotspot_id)")"

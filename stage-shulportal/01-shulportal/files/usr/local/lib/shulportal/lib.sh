@@ -2,7 +2,7 @@
 # ABOUTME: Pure decision functions for the ShulPortal Pi (page choice, watchdog, hotspot name).
 # ABOUTME: Sourced by the kiosk, refresh, watchdog and network scripts; does no I/O of its own.
 
-# Seconds without internet before the watchdog brings the setup hotspot back.
+# Seconds offline before a showing display gives way to setup, or Ethernet's stopped comitup restarts.
 SHULPORTAL_OFFLINE_SECS=${SHULPORTAL_OFFLINE_SECS:-300}
 
 # ap_id_from_serial SERIAL: the hotspot suffix, the serial's last 4 hex digits uppercased.
@@ -28,13 +28,14 @@ wifi_qr_payload() {
   printf 'WIFI:T:nopass;S:%s;;\n' "$out"
 }
 
-# choose_page CONNECTIVITY COMITUP_STATE CURRENT: online, setup or connecting.
-# A blip keeps the current page, so a showing display keeps its cached content.
+# choose_page CONNECTIVITY HOTSPOT_UP CURRENT OFFLINE_SECS: online, setup or connecting.
+# Setup needs the hotspot really on the air (comitup reports HOTSPOT without one while it
+# retries saved Wi-Fi). A showing display keeps its cached content for 5 minutes offline.
 choose_page() {
-  local connectivity=$1 state=$2 current=$3
+  local connectivity=$1 hotspot_up=$2 current=$3 offline_secs=$4
   if [ "$connectivity" = full ]; then
     echo online
-  elif [ "$state" = HOTSPOT ]; then
+  elif [ "$hotspot_up" = yes ] && { [ "$current" != online ] || [ "$offline_secs" -ge "$SHULPORTAL_OFFLINE_SECS" ]; }; then
     echo setup
   elif [ -n "$current" ]; then
     echo "$current"
@@ -43,19 +44,27 @@ choose_page() {
   fi
 }
 
-# watchdog_action NOW OFFLINE_SINCE CONNECTIVITY COMITUP_STATE COMITUP_ACTIVE:
-# none, disconnect-wifi (so comitup falls back to its hotspot) or start-comitup.
+# watchdog_action NOW OFFLINE_SINCE CONNECTIVITY COMITUP_ACTIVE: none or start-comitup.
+# comitup brings its own hotspot up when saved Wi-Fi fails; this only restarts it after
+# Ethernet had it stopped and the internet has then been gone for 5 minutes.
 watchdog_action() {
-  local now=$1 since=$2 connectivity=$3 state=$4 active=$5
-  if [ "$connectivity" = full ] || [ -z "$since" ] || [ $((now - since)) -lt "$SHULPORTAL_OFFLINE_SECS" ]; then
-    echo none
-  elif [ "$active" != yes ]; then
+  local now=$1 since=$2 connectivity=$3 active=$4
+  if [ "$connectivity" != full ] && [ -n "$since" ] && [ "$active" != yes ] &&
+    [ $((now - since)) -ge "$SHULPORTAL_OFFLINE_SECS" ]; then
     echo start-comitup
-  elif [ "$state" = CONNECTED ]; then
-    echo disconnect-wifi
   else
     echo none
   fi
+}
+
+# active_hotspot: reads active NetworkManager connection names on stdin and prints the
+# setup hotspot's (comitup names it ShulPortal-Setup-XXXX-<hash>), or nothing.
+active_hotspot() {
+  local name
+  while IFS= read -r name; do
+    case $name in ShulPortal-Setup-*) printf '%s\n' "$name"; return 0 ;; esac
+  done
+  return 0
 }
 
 # wired_should_stop_comitup CONNECTIVITY WIRED_UP: yes when Ethernet carries the internet,

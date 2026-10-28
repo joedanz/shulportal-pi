@@ -15,9 +15,9 @@ setup() {
   cp "$BATS_TEST_DIRNAME/fixtures/crashed-preferences.json" "$BATS_TEST_TMPDIR/p/Preferences"
   mark_clean_exit "$BATS_TEST_TMPDIR/p/Preferences"
   run cat "$BATS_TEST_TMPDIR/p/Preferences"
-  [[ $output == *'"exit_type":"Normal"'* ]]
-  [[ $output == *'"exited_cleanly":true'* ]]
-  [[ $output == *'"name":"Person 1"'* ]]
+  [[ $output == *'"exit_type":"Normal"'* ]] || false
+  [[ $output == *'"exited_cleanly":true'* ]] || false
+  [[ $output == *'"name":"Person 1"'* ]] || false
 }
 
 @test "mark_clean_exit ignores a missing file" {
@@ -29,29 +29,53 @@ setup() {
 @test "render_setup_page embeds SSID and an svg" {
   render_setup_page "$SHULPORTAL_SHARE/setup.html.tmpl" "$BATS_TEST_TMPDIR/setup.html" ShulPortal-Setup-C3D4
   run cat "$BATS_TEST_TMPDIR/setup.html"
-  [[ $output == *ShulPortal-Setup-C3D4* ]]
-  [[ $output == *'<svg'* ]]
-  [[ $output != *'{{'* ]]
+  [[ $output == *ShulPortal-Setup-C3D4* ]] || false
+  [[ $output == *'<svg'* ]] || false
+  [[ $output != *'{{'* ]] || false
   [ "$(grep -o '<svg' "$BATS_TEST_TMPDIR/setup.html" | wc -l | tr -d ' ')" = 1 ]
 }
 
 @test "refresh restarts the kiosk when the page changes" {
-  export STUB_CONNECTIVITY=none
-  echo HOTSPOT > "$SHULPORTAL_RUN/comitup-state"
+  export STUB_CONNECTIVITY=none STUB_ACTIVE=ShulPortal-Setup-C3D4-9f2a
   echo connecting > "$SHULPORTAL_RUN/page"
   run "$SHULPORTAL_BIN/shulportal-refresh"
   [ "$status" -eq 0 ]
   [ "$(cat "$SHULPORTAL_RUN/page")" = setup ]
   grep -q ShulPortal-Setup-C3D4 "$SHULPORTAL_RUN/setup.html"
-  [[ $(logged systemctl) == *"restart shulportal-kiosk"* ]]
+  [[ $(logged systemctl) == *"restart shulportal-kiosk"* ]] || false
 }
 
 @test "refresh names the hotspot from comitup's own id when it has one" {
-  export STUB_CONNECTIVITY=none
-  echo HOTSPOT > "$SHULPORTAL_RUN/comitup-state"
+  export STUB_CONNECTIVITY=none STUB_ACTIVE=ShulPortal-Setup-7A01-9f2a
   echo '{"id": "7A01"}' > "$SHULPORTAL_COMITUP_JSON"
   "$SHULPORTAL_BIN/shulportal-refresh"
   grep -q ShulPortal-Setup-7A01 "$SHULPORTAL_RUN/setup.html"
+}
+
+@test "refresh keeps a showing display while the hotspot is up but under 5 minutes offline" {
+  export STUB_CONNECTIVITY=none STUB_ACTIVE=ShulPortal-Setup-C3D4-9f2a SHULPORTAL_NOW=1200
+  echo online > "$SHULPORTAL_RUN/page"
+  echo 1000 > "$SHULPORTAL_RUN/offline-since"
+  "$SHULPORTAL_BIN/shulportal-refresh"
+  [ "$(cat "$SHULPORTAL_RUN/page")" = online ]
+  [ -z "$(logged systemctl)" ]
+}
+
+@test "refresh swaps a display for setup after 5 minutes offline with the hotspot up" {
+  export STUB_CONNECTIVITY=none STUB_ACTIVE=ShulPortal-Setup-C3D4-9f2a SHULPORTAL_NOW=1300
+  echo online > "$SHULPORTAL_RUN/page"
+  echo 1000 > "$SHULPORTAL_RUN/offline-since"
+  "$SHULPORTAL_BIN/shulportal-refresh"
+  [ "$(cat "$SHULPORTAL_RUN/page")" = setup ]
+}
+
+@test "kiosk unit never hits systemd's start limit" {
+  grep -qx 'StartLimitIntervalSec=0' "$FILES/etc/systemd/system/shulportal-kiosk.service"
+}
+
+@test "internet check asks shulportal.com, not a third-party URL" {
+  grep -qx 'uri=https://shulportal.com/pi-connectivity.txt' "$FILES/etc/NetworkManager/conf.d/20-shulportal-connectivity.conf"
+  grep -qx 'response=ShulPortal Pi connectivity OK' "$FILES/etc/NetworkManager/conf.d/20-shulportal-connectivity.conf"
 }
 
 @test "refresh does nothing when the page is unchanged" {
@@ -66,9 +90,9 @@ setup() {
   echo online > "$SHULPORTAL_RUN/page"
   run "$SHULPORTAL_BIN/shulportal-kiosk"
   [ "$status" -eq 0 ]
-  [[ $(logged chromium) == *"https://shulportal.com/tv"* ]]
-  [[ $(logged chromium) == *"--user-data-dir=$SHULPORTAL_PROFILE"* ]]
-  [[ $(logged chromium) == *"--kiosk"* ]]
+  [[ $(logged chromium) == *"https://shulportal.com/tv"* ]] || false
+  [[ $(logged chromium) == *"--user-data-dir=$SHULPORTAL_PROFILE"* ]] || false
+  [[ $(logged chromium) == *"--kiosk"* ]] || false
 }
 
 @test "kiosk marks the profile clean before launching" {
@@ -80,11 +104,11 @@ setup() {
 
 @test "kiosk launches connecting page by default" {
   run "$SHULPORTAL_BIN/shulportal-kiosk"
-  [[ $(logged chromium) == *"connecting.html"* ]]
+  [[ $(logged chromium) == *"connecting.html"* ]] || false
 }
 
 @test "kiosk launches the local setup page in setup" {
   echo setup > "$SHULPORTAL_RUN/page"
   run "$SHULPORTAL_BIN/shulportal-kiosk"
-  [[ $(logged chromium) == *"file://$SHULPORTAL_RUN/setup.html"* ]]
+  [[ $(logged chromium) == *"file://$SHULPORTAL_RUN/setup.html"* ]] || false
 }
