@@ -1,6 +1,6 @@
 # ShulPortal Pi
 
-A Raspberry Pi image that turns a **Raspberry Pi 4 or Pi 5** into a [ShulPortal](https://shulportal.com) lobby screen.
+A Raspberry Pi image that turns a **Raspberry Pi 3 B+, Pi 4 or Pi 5** into a [ShulPortal](https://shulportal.com) lobby screen.
 The image is the same for every shul. It opens `shulportal.com/tv`, which shows a short code; you link that code to one
 of your shul's signs from ShulPortal, and the screen shows that sign from then on, through reboots and power cuts.
 
