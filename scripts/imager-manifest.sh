@@ -18,12 +18,13 @@ jq -n \
     imager: {
       devices: [
         {name: "Raspberry Pi 5", tags: ["pi5-64bit"], matching_type: "exclusive", capabilities: []},
-        {name: "Raspberry Pi 4", tags: ["pi4-64bit"], matching_type: "inclusive", capabilities: []}
+        {name: "Raspberry Pi 4", tags: ["pi4-64bit"], matching_type: "inclusive", capabilities: []},
+        {name: "Raspberry Pi 3", tags: ["pi3-64bit"], matching_type: "inclusive", capabilities: []}
       ]
     },
     os_list: [{
       name: "ShulPortal Pi",
-      description: "Turns a Raspberry Pi 4 or 5 into a ShulPortal lobby screen.",
+      description: "Turns a Raspberry Pi 3 B+, 4 or 5 into a ShulPortal lobby screen.",
       url: $url,
       extract_size: $extract_size,
       extract_sha256: $extract_sha256,
@@ -31,6 +32,6 @@ jq -n \
       image_download_sha256: $image_download_sha256,
       release_date: $release_date,
       init_format: "cloudinit-rpi",
-      devices: ["pi5-64bit", "pi4-64bit"]
+      devices: ["pi5-64bit", "pi4-64bit", "pi3-64bit"]
     }]
   }'

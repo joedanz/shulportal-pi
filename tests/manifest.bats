@@ -18,10 +18,10 @@ setup() {
   [ "$(jq -r '.os_list[0].release_date' <<<"$output")" = 2026-10-28 ]
 }
 
-@test "manifest offers Imager customisation for Pi 4 and Pi 5 only" {
+@test "manifest offers Imager customisation for Pi 3, Pi 4 and Pi 5 only" {
   run "$MANIFEST" "$BATS_TEST_TMPDIR/test.img.xz" https://example.com/test.img.xz 2026-10-28
-  [ "$(jq -c '.os_list[0].devices' <<<"$output")" = '["pi5-64bit","pi4-64bit"]' ]
+  [ "$(jq -c '.os_list[0].devices' <<<"$output")" = '["pi5-64bit","pi4-64bit","pi3-64bit"]' ]
   [ "$(jq -r '.os_list[0].init_format' <<<"$output")" = cloudinit-rpi ]
   [ "$(jq -r '.os_list[0].name' <<<"$output")" = "ShulPortal Pi" ]
-  [ "$(jq -c '[.imager.devices[].name]' <<<"$output")" = '["Raspberry Pi 5","Raspberry Pi 4"]' ]
+  [ "$(jq -c '[.imager.devices[].name]' <<<"$output")" = '["Raspberry Pi 5","Raspberry Pi 4","Raspberry Pi 3"]' ]
 }
