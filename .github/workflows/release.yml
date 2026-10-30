@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the image with pi-gen
         run: |
           git clone --depth 1 --branch arm64 https://github.com/RPi-Distro/pi-gen.git pi-gen
@@ -53,7 +53,7 @@ jobs:
             gh release create "$version" out/* --title "ShulPortal Pi $version" --generate-notes
           fi
       - if: github.ref_type != 'tag'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shulportal-pi-${{ steps.package.outputs.version }}
           path: out/
