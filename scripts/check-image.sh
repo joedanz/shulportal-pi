@@ -51,6 +51,9 @@ if [ -L "$mnt/etc/resolv.conf" ] && [[ $(readlink "$mnt/etc/resolv.conf") == *sy
   fail "etc/resolv.conf points at systemd-resolved, which is masked"
 fi
 contains etc/systemd/system/apt-daily-upgrade.timer.d/shulportal.conf '03:15'
+contains etc/apt/preferences.d/shulportal-chromium 'Pin: version 1:156.0.8078.73-'
+grep -q '^Version: 1:156.0.8078.47-' <(awk '/^Package: chromium$/,/^$/' "$mnt/var/lib/dpkg/status") ||
+  fail "chromium is not 156.0.8078.47 (156.0.8078.73 crashes on the Pi)"
 
 kiosk_uid=$(awk -F: '$1 == "kiosk" { print $3 }' "$mnt/etc/passwd")
 [ -n "$kiosk_uid" ] || fail "no kiosk user"
