@@ -31,20 +31,17 @@ wifi_qr_payload() {
 # choose_page CONNECTIVITY HOTSPOT_UP CURRENT OFFLINE_SECS [SEEN_ONLINE]: online, cached, setup
 # or connecting. Setup needs the hotspot really on the air (comitup reports HOTSPOT without one
 # while it retries saved Wi-Fi). A showing display keeps its content for 5 minutes offline.
-# "cached" is ShulPortal opened without internet on a Pi that has shown it before: the browser
-# keeps the TV's page and its days of data. The internet coming back reloads it live.
+# cached: offline at boot on a Pi that has been online; opens the TV page from the browser's copy.
 choose_page() {
   local connectivity=$1 hotspot_up=$2 current=$3 offline_secs=$4 seen_online=${5:-no}
+  # A Pi that has shown its sign boots like a showing sign, whichever of Wi-Fi or the hotspot comes first.
+  if [ -z "$current" ] && [ "$seen_online" = yes ]; then current=cached; fi
   if [ "$connectivity" = full ]; then
     echo online
-  elif [ "$hotspot_up" = yes ] && { [ "$current" != online ] && [ "$current" != cached ] || [ "$offline_secs" -ge "$SHULPORTAL_OFFLINE_SECS" ]; }; then
+  elif [ "$hotspot_up" = yes ] && [[ $current != online && $current != cached || $offline_secs -ge $SHULPORTAL_OFFLINE_SECS ]]; then
     echo setup
-  elif [ -n "$current" ]; then
-    echo "$current"
-  elif [ "$seen_online" = yes ]; then
-    echo cached
   else
-    echo connecting
+    echo "${current:-connecting}"
   fi
 }
 
