@@ -7,6 +7,7 @@ set -euo pipefail
 source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
 run=${SHULPORTAL_RUN:-/run/shulportal}
 share=${SHULPORTAL_SHARE:-/usr/local/share/shulportal}
+state=${SHULPORTAL_STATE:-/var/lib/shulportal}
 nmcli=${SHULPORTAL_NMCLI:-nmcli}
 systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
 serial_file=${SHULPORTAL_SERIAL_FILE:-/proc/device-tree/serial-number}
@@ -30,8 +31,12 @@ current=$(cat "$run/page" 2>/dev/null || true)
 since=$(cat "$run/offline-since" 2>/dev/null || true)
 offline_secs=0
 if [ -n "$since" ]; then offline_secs=$(( ${SHULPORTAL_NOW:-$(date +%s)} - since )); fi
-page=$(choose_page "$connectivity" "$hotspot_up" "$current" "$offline_secs")
+if [ -e "$state/seen-online" ]; then seen_online=yes; else seen_online=no; fi
+page=$(choose_page "$connectivity" "$hotspot_up" "$current" "$offline_secs" "$seen_online")
 
+if [ "$page" = online ] && [ "$seen_online" = no ]; then
+  mkdir -p "$state" && touch "$state/seen-online"
+fi
 if [ "$page" = setup ]; then
   render_setup_page "$share/setup.html.tmpl" "$run/setup.html" "$(setup_ssid "$(hotspot_id)")"
 fi

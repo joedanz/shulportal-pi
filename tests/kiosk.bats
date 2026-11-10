@@ -113,6 +113,31 @@ setup() {
   [ ! -e "$SHULPORTAL_PROFILE/SingletonCookie" ]
 }
 
+@test "kiosk opens ShulPortal for a cached display too (the browser's saved copy shows offline)" {
+  echo cached > "$SHULPORTAL_RUN/page"
+  run "$SHULPORTAL_BIN/shulportal-kiosk"
+  [[ $(logged chromium) == *"https://shulportal.com/tv"* ]] || false
+}
+
+@test "refresh remembers, across reboots, that the Pi has shown ShulPortal" {
+  export STUB_CONNECTIVITY=full
+  "$SHULPORTAL_BIN/shulportal-refresh"
+  [ -e "$SHULPORTAL_STATE/seen-online" ]
+}
+
+@test "refresh opens the saved display at boot without internet once the Pi has been online" {
+  export STUB_CONNECTIVITY=none
+  mkdir -p "$SHULPORTAL_STATE" && touch "$SHULPORTAL_STATE/seen-online"
+  "$SHULPORTAL_BIN/shulportal-refresh"
+  [ "$(cat "$SHULPORTAL_RUN/page")" = cached ]
+}
+
+@test "refresh shows connecting at boot without internet on a Pi that has never been online" {
+  export STUB_CONNECTIVITY=none
+  "$SHULPORTAL_BIN/shulportal-refresh"
+  [ "$(cat "$SHULPORTAL_RUN/page")" = connecting ]
+}
+
 @test "kiosk launches connecting page by default" {
   run "$SHULPORTAL_BIN/shulportal-kiosk"
   [[ $(logged chromium) == *"connecting.html"* ]] || false

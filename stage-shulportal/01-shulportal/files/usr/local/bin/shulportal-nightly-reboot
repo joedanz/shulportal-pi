@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # ABOUTME: The nightly restart: waits (up to an hour) while the day's package upgrade is still running,
-# ABOUTME: so a restart never lands in the middle of installing Chromium or system updates.
+# ABOUTME: so a restart never lands mid-install. Skipped without internet, leaving the TV's screen alone.
 set -euo pipefail
 
 systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
+nmcli=${SHULPORTAL_NMCLI:-nmcli}
+
+if [ "$("$nmcli" networking connectivity check 2>/dev/null || echo unknown)" != full ]; then
+  echo "no internet: skipping tonight's restart"
+  exit 0
+fi
 wait_secs=${SHULPORTAL_REBOOT_WAIT_SECS:-30}
 max_waits=${SHULPORTAL_REBOOT_MAX_WAITS:-120}
 

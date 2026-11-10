@@ -27,17 +27,26 @@ dispatcher() { "$BATS_TEST_DIRNAME/../stage-shulportal/01-shulportal/files/etc/N
 }
 
 @test "nightly reboot goes ahead when no upgrade is running" {
+  export STUB_CONNECTIVITY=full
   run "$SHULPORTAL_BIN/shulportal-nightly-reboot"
   [ "$status" -eq 0 ]
   [ "$(logged systemctl)" = reboot ]
 }
 
 @test "nightly reboot waits for a running upgrade, but not forever" {
-  export STUB_ACTIVE_UNITS=apt-daily-upgrade.service SHULPORTAL_REBOOT_WAIT_SECS=0 SHULPORTAL_REBOOT_MAX_WAITS=3
+  export STUB_CONNECTIVITY=full STUB_ACTIVE_UNITS=apt-daily-upgrade.service SHULPORTAL_REBOOT_WAIT_SECS=0 SHULPORTAL_REBOOT_MAX_WAITS=3
   run "$SHULPORTAL_BIN/shulportal-nightly-reboot"
   [ "$status" -eq 0 ]
   [ "$(logged systemctl)" = reboot ]
   [[ $output == *"waited for apt-daily-upgrade"* ]] || false
+}
+
+@test "nightly reboot skips a night without internet, leaving what the TV shows alone" {
+  export STUB_CONNECTIVITY=none
+  run "$SHULPORTAL_BIN/shulportal-nightly-reboot"
+  [ "$status" -eq 0 ]
+  [ -z "$(logged systemctl)" ]
+  [[ $output == *"no internet"* ]] || false
 }
 
 @test "updates install shortly before the nightly reboot" {

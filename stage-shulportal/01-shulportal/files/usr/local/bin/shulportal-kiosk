@@ -14,7 +14,7 @@ mark_clean_exit "$profile/Default/Preferences"
 rm -f "$profile/SingletonLock" "$profile/SingletonSocket" "$profile/SingletonCookie"
 
 case "$(cat "$run/page" 2>/dev/null || true)" in
-  online) url=https://shulportal.com/tv ;;
+  online | cached) url=https://shulportal.com/tv ;;
   setup) url="file://$run/setup.html" ;;
   *) url="file://$share/connecting.html" ;;
 esac

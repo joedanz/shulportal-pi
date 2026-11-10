@@ -31,10 +31,14 @@ To link a screen to a different sign, open ShulPortal on a phone, rotate that si
 - [comitup](https://github.com/davesteele/comitup) for the setup hotspot. It comes up whenever saved Wi-Fi can't connect
   (new router, changed password) and stays off while Ethernet works. A showing sign keeps its last content for 5 minutes
   without internet before the TV switches to the setup page.
+- Without internet, a Pi that has shown its sign before still opens it at startup: the browser keeps the TV page and a
+  week of its schedule, so a reboot or power cut during an outage brings back the right day's times. When the internet
+  returns, the TV reloads live.
 - The Pi counts itself online when it can reach `shulportal.com/pi-connectivity.txt`, so content filters that block
   generic check URLs don't matter.
 - Security updates install every day (Debian security and Raspberry Pi's archive, which carries Chromium), and the Pi
-  restarts around 4am in its time zone (America/New_York unless set in Imager).
+  restarts around 4am in its time zone (America/New_York unless set in Imager). It skips that restart on a night without
+  internet.
 - No login: SSH is off and the default account is locked.
 
 ## Development
