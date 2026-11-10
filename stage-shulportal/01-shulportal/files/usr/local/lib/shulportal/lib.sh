@@ -28,19 +28,20 @@ wifi_qr_payload() {
   printf 'WIFI:T:nopass;S:%s;;\n' "$out"
 }
 
-# choose_page CONNECTIVITY HOTSPOT_UP CURRENT OFFLINE_SECS: online, setup or connecting.
-# Setup needs the hotspot really on the air (comitup reports HOTSPOT without one while it
-# retries saved Wi-Fi). A showing display keeps its cached content for 5 minutes offline.
+# choose_page CONNECTIVITY HOTSPOT_UP CURRENT OFFLINE_SECS [SEEN_ONLINE]: online, cached, setup
+# or connecting. Setup needs the hotspot really on the air (comitup reports HOTSPOT without one
+# while it retries saved Wi-Fi). A showing display keeps its content for 5 minutes offline.
+# cached: offline at boot on a Pi that has been online; opens the TV page from the browser's copy.
 choose_page() {
-  local connectivity=$1 hotspot_up=$2 current=$3 offline_secs=$4
+  local connectivity=$1 hotspot_up=$2 current=$3 offline_secs=$4 seen_online=${5:-no}
+  # A Pi that has shown its sign boots like a showing sign, whichever of Wi-Fi or the hotspot comes first.
+  if [ -z "$current" ] && [ "$seen_online" = yes ]; then current=cached; fi
   if [ "$connectivity" = full ]; then
     echo online
-  elif [ "$hotspot_up" = yes ] && { [ "$current" != online ] || [ "$offline_secs" -ge "$SHULPORTAL_OFFLINE_SECS" ]; }; then
+  elif [ "$hotspot_up" = yes ] && [[ $current != online && $current != cached || $offline_secs -ge $SHULPORTAL_OFFLINE_SECS ]]; then
     echo setup
-  elif [ -n "$current" ]; then
-    echo "$current"
   else
-    echo connecting
+    echo "${current:-connecting}"
   fi
 }
 

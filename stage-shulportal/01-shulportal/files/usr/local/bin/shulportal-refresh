@@ -7,6 +7,10 @@ set -euo pipefail
 source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
 run=${SHULPORTAL_RUN:-/run/shulportal}
 share=${SHULPORTAL_SHARE:-/usr/local/share/shulportal}
+profile=${SHULPORTAL_PROFILE:-/var/lib/shulportal/chromium}
+# In the browser profile, so wiping the profile forgets it too. The image creates the profile
+# folder for the kiosk user; never create it here as root.
+seen_marker="$profile/shulportal-seen-online"
 nmcli=${SHULPORTAL_NMCLI:-nmcli}
 systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
 serial_file=${SHULPORTAL_SERIAL_FILE:-/proc/device-tree/serial-number}
@@ -30,8 +34,13 @@ current=$(cat "$run/page" 2>/dev/null || true)
 since=$(cat "$run/offline-since" 2>/dev/null || true)
 offline_secs=0
 if [ -n "$since" ]; then offline_secs=$(( ${SHULPORTAL_NOW:-$(date +%s)} - since )); fi
-page=$(choose_page "$connectivity" "$hotspot_up" "$current" "$offline_secs")
+if [ -e "$seen_marker" ]; then seen_online=yes; else seen_online=no; fi
+page=$(choose_page "$connectivity" "$hotspot_up" "$current" "$offline_secs" "$seen_online")
 
+# Online for a whole refresh already, so the TV page has had time to load and keep itself.
+if [ "$page" = online ] && [ "$current" = online ] && [ "$seen_online" = no ]; then
+  touch "$seen_marker" 2>/dev/null || true
+fi
 if [ "$page" = setup ]; then
   render_setup_page "$share/setup.html.tmpl" "$run/setup.html" "$(setup_ssid "$(hotspot_id)")"
 fi

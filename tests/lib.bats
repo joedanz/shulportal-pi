@@ -52,6 +52,22 @@ setup() {
   run choose_page none no "" 0; [ "$output" = "connecting" ]
 }
 
+@test "choose_page opens the saved display at boot without internet once the Pi has been online" {
+  run choose_page none no "" 0 yes; [ "$output" = "cached" ]
+}
+
+@test "choose_page gives a cached display the same 5 minutes before setup, and the live one when the internet returns" {
+  run choose_page none yes cached 299 yes; [ "$output" = "cached" ]
+  run choose_page none yes cached 300 yes; [ "$output" = "setup" ]
+  run choose_page full no cached 0 yes;    [ "$output" = "online" ]
+}
+
+@test "choose_page boots a Pi that has been online like a showing sign, even if the hotspot is up first" {
+  run choose_page none yes "" 0 yes;   [ "$output" = "cached" ]
+  run choose_page none yes "" 300 yes; [ "$output" = "setup" ]
+  run choose_page none yes "" 0 no;    [ "$output" = "setup" ]
+}
+
 @test "watchdog_action does nothing while online or under 300s offline" {
   run watchdog_action 1000 "" full no no;   [ "$output" = "none" ]
   run watchdog_action 1299 1000 none no no; [ "$output" = "none" ]
