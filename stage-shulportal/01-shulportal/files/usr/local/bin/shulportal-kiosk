@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ABOUTME: Runs inside cage as the kiosk user: marks the last run clean, then execs Chromium
-# ABOUTME: full screen on the page shulportal-refresh chose (ShulPortal /tv or a local page).
+# ABOUTME: full screen on the page shulportal-refresh (or shulportal-update) chose: ShulPortal /tv or a local page.
 set -euo pipefail
 
 # shellcheck source=/dev/null
@@ -8,14 +8,23 @@ source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
 run=${SHULPORTAL_RUN:-/run/shulportal}
 profile=${SHULPORTAL_PROFILE:-/var/lib/shulportal/chromium}
 share=${SHULPORTAL_SHARE:-/usr/local/share/shulportal}
+state=${SHULPORTAL_STATE:-/var/lib/shulportal}
 
 mark_clean_exit "$profile/Default/Preferences"
 # A power cut leaves Chromium's single-instance locks behind; they'd point at a dead process.
 rm -f "$profile/SingletonLock" "$profile/SingletonSocket" "$profile/SingletonCookie"
 
 case "$(cat "$run/page" 2>/dev/null || true)" in
-  online | cached) url=https://shulportal.com/tv ;;
+  online | cached)
+    # The device id lets the admin page offer this Pi updates; without one the sign still shows.
+    if id=$(ensure_device_id "$state/device-id" 2>/dev/null); then
+      url="https://shulportal.com/tv?device=$id"
+    else
+      url=https://shulportal.com/tv
+    fi
+    ;;
   setup) url="file://$run/setup.html" ;;
+  updating) url="file://$share/updating.html" ;;
   *) url="file://$share/connecting.html" ;;
 esac
 

@@ -153,3 +153,38 @@ setup() {
   run "$SHULPORTAL_BIN/shulportal-kiosk"
   [[ $(logged chromium) == *"file://$SHULPORTAL_RUN/setup.html"* ]] || false
 }
+
+@test "the kiosk opens /tv with its device id" {
+  for page in online cached; do
+    echo "$page" > "$SHULPORTAL_RUN/page"
+    "$SHULPORTAL_BIN/shulportal-kiosk"
+  done
+  id=$(cat "$SHULPORTAL_STATE/device-id")
+  [[ $id =~ ^[0-9a-f]{32}$ ]] || false
+  [ "$(grep -c "https://shulportal.com/tv?device=$id\$" "$STUB_LOG/chromium.log")" = 2 ]
+}
+
+@test "the kiosk shows the updating page" {
+  echo updating > "$SHULPORTAL_RUN/page"
+  "$SHULPORTAL_BIN/shulportal-kiosk"
+  [[ $(logged chromium) == *"file://$SHULPORTAL_SHARE/updating.html" ]] || false
+  grep -q 'Updating the TV' "$SHULPORTAL_SHARE/updating.html"
+}
+
+@test "refresh leaves an install alone" {
+  export STUB_CONNECTIVITY=none STUB_ACTIVE=ShulPortal-Setup-C3D4-9f2a
+  echo updating > "$SHULPORTAL_RUN/page"
+  touch "$SHULPORTAL_RUN/installing"
+  run "$SHULPORTAL_BIN/shulportal-refresh"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$SHULPORTAL_RUN/page")" = updating ]
+  [ -z "$(logged systemctl)" ]
+}
+
+@test "the kiosk still opens /tv when it can't keep a device id" {
+  rmdir "$SHULPORTAL_STATE"
+  echo online > "$SHULPORTAL_RUN/page"
+  run "$SHULPORTAL_BIN/shulportal-kiosk"
+  [ "$status" -eq 0 ]
+  [[ $(logged chromium) == *"https://shulportal.com/tv" ]] || false
+}

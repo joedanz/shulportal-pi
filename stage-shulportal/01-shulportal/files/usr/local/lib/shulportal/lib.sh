@@ -1,6 +1,6 @@
 # shellcheck shell=bash
-# ABOUTME: Pure decision functions for the ShulPortal Pi (page choice, watchdog, hotspot name).
-# ABOUTME: Sourced by the kiosk, refresh, watchdog and network scripts; does no I/O of its own.
+# ABOUTME: Decision functions for the ShulPortal Pi (page choice, watchdog, hotspot name, updates), plus the few
+# ABOUTME: small file helpers they need (device id, setup page). Sourced by the kiosk, refresh, watchdog and updater.
 
 # Seconds offline before a showing display gives way to setup, or Ethernet's stopped comitup restarts.
 SHULPORTAL_OFFLINE_SECS=${SHULPORTAL_OFFLINE_SECS:-300}
@@ -110,4 +110,17 @@ render_setup_page() {
   page=${page//'{{QR}}'/"$qr"}
   printf '%s\n' "$page" > "$out.tmp"
   mv "$out.tmp" "$out"
+}
+
+# ensure_device_id FILE: prints this Pi's device id (32 lowercase hex, 128 random bits), creating FILE (mode 600)
+# the first time. ShulPortal knows the Pi by it for remote updates, so it's a secret like a TV link: never log it.
+ensure_device_id() {
+  local f=$1 id
+  id=$(cat "$f" 2>/dev/null || true)
+  if [[ ! $id =~ ^[0-9a-f]{32}$ ]]; then
+    id=$(od -An -tx1 -N16 /dev/urandom | tr -d ' \n')
+    [[ $id =~ ^[0-9a-f]{32}$ ]] || return 1
+    (umask 077 && printf '%s\n' "$id" > "$f.tmp") && mv "$f.tmp" "$f" || return 1
+  fi
+  printf '%s\n' "$id"
 }
