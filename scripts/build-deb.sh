@@ -9,8 +9,10 @@ repo=$(cd "$(dirname "$0")/.." && pwd)
 root=$(mktemp -d)
 trap 'rm -rf "$root"' EXIT
 
-# Modes come from git (executables stay executable); --root-owner-group makes everything root's.
+# Executable bits come from git; --root-owner-group makes everything root's.
 cp -Rp "$repo/stage-shulportal/01-shulportal/files/." "$root/"
+# Never writable by anyone but root, whatever the checkout's umask (NetworkManager refuses a group-writable hook).
+chmod -R go-w "$root"
 mkdir -p "$root/DEBIAN"
 sed "s/@VERSION@/$version/" "$repo/debian/control.in" > "$root/DEBIAN/control"
 for s in preinst postinst postrm; do install -m 755 "$repo/debian/$s" "$root/DEBIAN/$s"; done
