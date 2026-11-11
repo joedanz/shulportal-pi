@@ -10,12 +10,8 @@ setup() {
   common_setup
   # shellcheck source=/dev/null
   source "$SHULPORTAL_LIB"
-  H="$BATS_TEST_DIRNAME/helpers/bin"
-  export SHULPORTAL_CURL="$H/curl" SHULPORTAL_APT_GET="$H/apt-get" SHULPORTAL_DPKG_QUERY="$H/dpkg-query"
   export SHULPORTAL_PIN_FILE="$FILES/etc/apt/preferences.d/shulportal-chromium"
   export SHULPORTAL_POOL=https://pool.test/c/chromium
-  export STUB_FILES="$BATS_TEST_TMPDIR/files"
-  mkdir -p "$STUB_FILES"
   # A fallback list for test files, with their real hashes.
   local fb="$BATS_TEST_TMPDIR/fallback" n
   echo "version $GOOD" > "$fb"
@@ -26,7 +22,7 @@ setup() {
   export SHULPORTAL_CHROMIUM_FALLBACK="$fb"
 }
 
-check() { run "$FILES/usr/local/bin/shulportal-chromium-check"; }
+check() { run "$SHULPORTAL_BIN/shulportal-chromium-check"; }
 
 @test "chromium_blocked matches the pinned build only" {
   chromium_blocked 1:156.0.8078.73-1~deb13u1+rpt1 "$SHULPORTAL_PIN_FILE"

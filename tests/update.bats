@@ -10,19 +10,14 @@ setup() {
   common_setup
   # shellcheck source=/dev/null
   source "$SHULPORTAL_LIB"
-  H="$BATS_TEST_DIRNAME/helpers/bin"
   export SHULPORTAL_UPDATE_DIR="$BATS_TEST_TMPDIR/update"
   export SHULPORTAL_API=https://shulportal.test
-  export SHULPORTAL_CURL="$H/curl" SHULPORTAL_APT_GET="$H/apt-get" SHULPORTAL_DPKG="$H/dpkg"
-  export SHULPORTAL_DPKG_QUERY="$H/dpkg-query" SHULPORTAL_DPKG_DEB="$H/dpkg-deb"
-  export SHULPORTAL_REFRESH="$H/refresh" SHULPORTAL_CHROMIUM_CHECK="$H/chromium-check"
-  export STUB_FILES="$BATS_TEST_TMPDIR/files"
-  mkdir -p "$SHULPORTAL_UPDATE_DIR" "$STUB_FILES"
+  mkdir -p "$SHULPORTAL_UPDATE_DIR"
   echo "$ID" > "$SHULPORTAL_STATE/device-id"
   echo "old package" > "$SHULPORTAL_UPDATE_DIR/current.deb"
 }
 
-update() { run "$FILES/usr/local/bin/shulportal-update"; }
+update() { run "$SHULPORTAL_BIN/shulportal-update"; }
 
 # A throwaway signing key, and a release VERSION signed by it (or by another key with "badsig").
 release() {
@@ -122,15 +117,18 @@ reboot" ]
   [ -e "$SHULPORTAL_RUN/installing" ]
 }
 
-@test "a bad signature installs nothing, reports, and puts the page back" {
+@test "a bad signature installs nothing, reports, and never takes over the screen" {
   release 1.1.1 badsig
+  echo online > "$SHULPORTAL_RUN/page"
   update
   [ "$status" -eq 0 ]
   [ -z "$(logged apt-get)" ]
+  [ -z "$(logged systemctl)" ]
+  [ -z "$(logged refresh)" ]
+  [ "$(cat "$SHULPORTAL_RUN/page")" = online ]
   [ "$(tail -n1 "$STUB_LOG/check.log")" = \
     "{\"device\":\"$ID\",\"version\":\"1.1.0\",\"failed\":{\"version\":\"1.1.1\",\"reason\":\"The download's signature didn't check out.\"}}" ]
   [ ! -e "$SHULPORTAL_RUN/installing" ]
-  [ "$(logged refresh-state)" = "page= installing=no" ]
   [ "$(cat "$SHULPORTAL_UPDATE_DIR/current.deb")" = "old package" ]
 }
 
@@ -160,6 +158,8 @@ reboot" ]
   [[ $(tail -n1 "$STUB_LOG/check.log") == *'"reason":"Installing the new version failed."'* ]] || false
   [ "$(cat "$SHULPORTAL_UPDATE_DIR/current.deb")" = "old package" ]
   [[ $(logged systemctl) != *reboot* ]] || false
+  # The screen was taken for the install, and is given back with the page cleared for refresh to choose.
+  [ "$(logged refresh-state)" = "page= installing=no" ]
 }
 
 @test "a failed Chromium check puts the old package back" {
@@ -178,12 +178,11 @@ reboot" ]
   cat > "$BATS_TEST_TMPDIR/flaky-curl" <<SH
 #!/usr/bin/env bash
 if [[ \$* == *"failed"* ]] && [ ! -e "$BATS_TEST_TMPDIR/back-online" ]; then exit 6; fi
-exec "$H/curl" "\$@"
+exec "$STUB_BIN/curl" "\$@"
 SH
   chmod +x "$BATS_TEST_TMPDIR/flaky-curl"
   export SHULPORTAL_CURL="$BATS_TEST_TMPDIR/flaky-curl"
   update
-  [ "$(logged refresh-state)" = "page= installing=no" ]
   [ -s "$SHULPORTAL_UPDATE_DIR/failed" ]
   touch "$BATS_TEST_TMPDIR/back-online"
   export STUB_REPLY='{}'

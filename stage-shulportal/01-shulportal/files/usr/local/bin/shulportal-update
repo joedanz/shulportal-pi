@@ -22,7 +22,8 @@ chromium_check=${SHULPORTAL_CHROMIUM_CHECK:-/usr/local/bin/shulportal-chromium-c
 apt_opts=(-o DPkg::Lock::Timeout=600)
 
 mkdir -p "$update_dir" "$run"
-exec 9>"$update_dir/lock"
+# In /run (memory), so a check every 5 minutes never writes to the SD card.
+exec 9>"$run/update.lock"
 # Only one at a time: an install can outlast the timer's 5 minutes.
 if command -v flock >/dev/null; then flock -n 9 || exit 0; fi
 
@@ -59,21 +60,20 @@ put_back() {
   "$apt_get" "${apt_opts[@]}" install -y --reinstall --allow-downgrades "$update_dir/current.deb" || true
 }
 
-# fail REASON: gives the screen back, then reports the failure (or leaves it for the next check).
+screen=no
+# fail REASON: gives the screen back if the install had it, then reports the failure (or leaves it for the next check).
 fail() {
   printf '%s\n%s\n' "$target" "$1" > "$update_dir/failed"
   rm -rf "$incoming"
-  rm -f "$run/installing" "$run/page"
-  "$refresh" || true
+  if [ "$screen" = yes ]; then
+    rm -f "$run/installing" "$run/page"
+    "$refresh" || true
+  fi
   if check "$(check_body "$device" "$version" "$target" "$1")" >/dev/null; then rm -f "$update_dir/failed"; fi
   exit 0
 }
 
-# The screen says what's happening, and nothing switches it back mid-install (refresh waits on this).
-touch "$run/installing"
-echo updating > "$run/page"
-"$systemctl" restart shulportal-kiosk || true
-
+# Downloaded and checked while the sign keeps showing: a bad download never blanks the TV.
 rm -rf "$incoming"
 mkdir -p "$incoming"
 url="$api/api/pi/release/$target/shulportal-pi_${target}_all.deb"
@@ -86,6 +86,12 @@ if [ "$("$dpkg_deb" -f "$deb" Package 2>/dev/null)" != shulportal-pi ] ||
   [ "$("$dpkg_deb" -f "$deb" Version 2>/dev/null)" != "$target" ]; then
   fail "The download wasn't the version asked for."
 fi
+
+# The screen says what's happening, and nothing switches it back mid-install (refresh waits on this).
+screen=yes
+touch "$run/installing"
+echo updating > "$run/page"
+"$systemctl" restart shulportal-kiosk || true
 
 if ! "$apt_get" "${apt_opts[@]}" install -y "$deb"; then
   put_back

@@ -47,10 +47,8 @@ python3 -I tests/install/stub_server.py "$work" 8765 "$work/checks.log" &
 server=$!
 trap 'kill $server 2>/dev/null || true' EXIT
 for _ in $(seq 50); do curl -s -o /dev/null http://127.0.0.1:8765/ && break; sleep 0.1; done
-printf '#!/bin/sh\necho "$*" >> %s/systemctl.log\n' "$work" > "$work/systemctl"
-chmod +x "$work/systemctl"
-SHULPORTAL_API=http://127.0.0.1:8765 SHULPORTAL_RELEASE_KEY="$work/pub.pem" \
-  SHULPORTAL_SYSTEMCTL="$work/systemctl" SHULPORTAL_REFRESH=/bin/true \
+STUB_LOG=$work SHULPORTAL_API=http://127.0.0.1:8765 SHULPORTAL_RELEASE_KEY="$work/pub.pem" \
+  SHULPORTAL_SYSTEMCTL="$PWD/tests/helpers/bin/systemctl" SHULPORTAL_REFRESH=/bin/true \
   /usr/local/bin/shulportal-update
 
 # shellcheck disable=SC2016 # ${Version} is dpkg-query's format, not the shell's.

@@ -25,6 +25,8 @@ executable() { [ -x "$mnt/$1" ] || fail "$1 is missing or not executable"; }
 contains() { grep -q -- "$2" "$mnt/$1" 2>/dev/null || fail "$1 does not contain $2"; }
 absent() { [ ! -e "$mnt/$1" ] || fail "$1 should not be in the image"; }
 enabled() { [ -n "$(find "$mnt/etc/systemd/system" -path "*.wants/$1" -print -quit)" ] || fail "$1 is not enabled"; }
+nonempty() { [ -s "$mnt/$1" ] || fail "$1 is missing or empty"; }
+pkg_version() { awk -v p="Package: $1" '$0 == p, /^$/' "$mnt/var/lib/dpkg/status" | sed -n 's/^Version: //p'; }
 masked() { [ "$(readlink "$mnt/etc/systemd/system/$1")" = /dev/null ] || fail "$1 is not masked"; }
 
 for f in usr/bin/cage usr/bin/chromium usr/bin/qrencode usr/sbin/dnsmasq \
@@ -47,10 +49,9 @@ contains boot/firmware/cmdline.txt 'consoleblank=0'
 absent var/lib/comitup/comitup.json
 # The kiosk makes the device id at first start; an image must never carry one.
 absent var/lib/shulportal/device-id
-[ -s "$mnt/usr/local/share/shulportal/release-key.pem" ] || fail "no release key for remote updates"
-[ -s "$mnt/var/lib/shulportal-update/current.deb" ] || fail "no current.deb to put back after a failed update"
-grep -qx "Version: $version" <(awk '/^Package: shulportal-pi$/,/^$/' "$mnt/var/lib/dpkg/status") ||
-  fail "shulportal-pi is not version $version"
+nonempty usr/local/share/shulportal/release-key.pem
+nonempty var/lib/shulportal-update/current.deb
+[ "$(pkg_version shulportal-pi)" = "$version" ] || fail "shulportal-pi is not version $version"
 for u in seatd.service shulportal-kiosk.service shulportal-firstboot.service \
   shulportal-watchdog.timer shulportal-reboot.timer shulportal-update.timer comitup.service; do
   enabled "$u"
@@ -62,7 +63,7 @@ if [ -L "$mnt/etc/resolv.conf" ] && [[ $(readlink "$mnt/etc/resolv.conf") == *sy
 fi
 contains etc/systemd/system/apt-daily-upgrade.timer.d/shulportal.conf '03:15'
 contains etc/apt/preferences.d/shulportal-chromium 'Pin: version 1:156.0.8078.73-'
-chromium=$(awk '/^Package: chromium$/,/^$/' "$mnt/var/lib/dpkg/status" | sed -n 's/^Version: //p')
+chromium=$(pkg_version chromium)
 if chromium_blocked "$chromium" "$mnt/etc/apt/preferences.d/shulportal-chromium"; then
   fail "chromium $chromium is a blocked build (see etc/apt/preferences.d/shulportal-chromium)"
 fi

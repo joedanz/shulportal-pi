@@ -24,6 +24,7 @@ fail() {
 [ -n "$good" ] || fail
 echo "Chromium $current is blocked: putting back $good"
 
+sums=$(sed -n '2,$p' "$fallback")
 d=$(mktemp -d)
 trap 'rm -rf "$d"' EXIT
 names=()
@@ -31,7 +32,7 @@ while read -r _hash name; do
   [ -n "$name" ] || continue
   "$curl" -fsSL --max-time 600 -o "$d/$name" "$pool/$name" || fail
   names+=("$d/$name")
-done < <(sed -n '2,$p' "$fallback")
+done <<<"$sums"
 [ "${#names[@]}" -gt 0 ] || fail
-(cd "$d" && sed -n '2,$p' "$fallback" | sha256sum -c --quiet -) || fail
+(cd "$d" && sha256sum -c --quiet - <<<"$sums") || fail
 "$apt_get" -o DPkg::Lock::Timeout=600 install -y --allow-downgrades "${names[@]}" || fail

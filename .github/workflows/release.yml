@@ -18,7 +18,8 @@ jobs:
         run: |
           if [ "$GITHUB_REF_TYPE" = tag ]; then ver=${GITHUB_REF_NAME#v}; else ver=0.0.0+dev.${GITHUB_SHA::7}; fi
           # A release tag is vX.Y.Z: a TV only ever installs a version of that form.
-          if [ "$GITHUB_REF_TYPE" = tag ] && [[ ! $ver =~ ^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$ ]]; then
+          source stage-shulportal/01-shulportal/files/usr/local/lib/shulportal/lib.sh
+          if [ "$GITHUB_REF_TYPE" = tag ] && ! is_version "$ver"; then
             echo "::error::release tags look like v1.2.3, not $GITHUB_REF_NAME"; exit 1
           fi
           scripts/build-deb.sh "$ver" out

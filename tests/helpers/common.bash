@@ -18,9 +18,15 @@ common_setup() {
   export SHULPORTAL_NMCLI="$BATS_TEST_DIRNAME/helpers/bin/nmcli"
   export SHULPORTAL_SYSTEMCTL="$BATS_TEST_DIRNAME/helpers/bin/systemctl"
   export SHULPORTAL_CHROMIUM="$BATS_TEST_DIRNAME/helpers/bin/chromium"
+  # Remote updates and the Chromium list (stubs in helpers/bin; release files served from $STUB_FILES).
+  export STUB_BIN="$BATS_TEST_DIRNAME/helpers/bin"
+  export SHULPORTAL_CURL="$STUB_BIN/curl" SHULPORTAL_APT_GET="$STUB_BIN/apt-get" SHULPORTAL_DPKG="$STUB_BIN/dpkg"
+  export SHULPORTAL_DPKG_QUERY="$STUB_BIN/dpkg-query" SHULPORTAL_DPKG_DEB="$STUB_BIN/dpkg-deb"
+  export SHULPORTAL_REFRESH="$STUB_BIN/refresh" SHULPORTAL_CHROMIUM_CHECK="$STUB_BIN/chromium-check"
+  export STUB_FILES="$BATS_TEST_TMPDIR/files"
   # Never reach the host's real systemd-run (CI has one); tests that want it use the stub.
   export SHULPORTAL_SYSTEMD_RUN=shulportal-test-no-systemd-run
-  mkdir -p "$SHULPORTAL_RUN" "$SHULPORTAL_STATE"
+  mkdir -p "$SHULPORTAL_RUN" "$SHULPORTAL_STATE" "$STUB_FILES"
   printf '10000000a1b2c3d4\0' > "$SHULPORTAL_SERIAL_FILE"
 }
 
