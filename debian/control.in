@@ -2,6 +2,7 @@ Package: shulportal-pi
 Version: @VERSION@
 Architecture: all
 Maintainer: ShulPortal <joedanz@users.noreply.github.com>
+Pre-Depends: comitup
 Depends: cage, seatd, chromium, qrencode, unattended-upgrades, comitup, curl, openssl
 Section: misc
 Priority: optional

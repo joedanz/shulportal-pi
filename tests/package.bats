@@ -23,6 +23,11 @@ build() {
   done
 }
 
+@test "comitup is set up before the package unpacks, so its config is in place to divert" {
+  build
+  [ "$(dpkg-deb -f "$DEB" Pre-Depends)" = comitup ]
+}
+
 @test "the package holds every kiosk file, executable" {
   build
   contents=$(dpkg-deb -c "$DEB")
