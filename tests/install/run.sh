@@ -28,7 +28,10 @@ apt-get install -y -qq --reinstall "$work/shulportal-pi_9.0.0_all.deb" >/dev/nul
 [ "$(seeded)" = "$before" ] || { echo "FAIL: install touched setup state"; exit 1; }
 [ "$(dpkg-divert --listpackage /etc/comitup.conf)" = shulportal-pi ] || { echo "FAIL: comitup.conf not diverted"; exit 1; }
 grep -q 'ShulPortal-Setup-' /etc/comitup.conf || { echo "FAIL: /etc/comitup.conf isn't ours"; exit 1; }
-[ -f /etc/comitup.conf.comitup ] || { echo "FAIL: comitup's own config is gone"; exit 1; }
+# comitup's own copy is kept aside, when its package ships one.
+if dpkg -L comitup | grep -qx /etc/comitup.conf; then
+  [ -f /etc/comitup.conf.comitup ] || { echo "FAIL: comitup's own config is gone"; exit 1; }
+fi
 id kiosk >/dev/null || { echo "FAIL: no kiosk user"; exit 1; }
 
 # An update from a stub shulportal.com, signed with the throwaway key.
