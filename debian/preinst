@@ -1,0 +1,9 @@
+#!/bin/sh
+# ABOUTME: Before shulportal-pi unpacks: moves comitup's own /etc/comitup.conf aside, so the package's
+# ABOUTME: config (the ShulPortal-Setup hotspot name and callback) can take its place.
+set -e
+case "$1" in
+  install | upgrade)
+    dpkg-divert --package shulportal-pi --add --rename --divert /etc/comitup.conf.comitup /etc/comitup.conf
+    ;;
+esac

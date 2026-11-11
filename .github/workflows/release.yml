@@ -13,6 +13,12 @@ jobs:
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v7
+      - id: deb
+        name: Build the shulportal-pi package
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then ver=${GITHUB_REF_NAME#v}; else ver=0.0.0+dev.${GITHUB_SHA::7}; fi
+          scripts/build-deb.sh "$ver" out
+          echo "ver=$ver" >> "$GITHUB_OUTPUT"
       - name: Build the image with pi-gen
         run: |
           git clone --depth 1 --branch arm64 https://github.com/RPi-Distro/pi-gen.git pi-gen
@@ -22,6 +28,7 @@ jobs:
           echo "::add-mask::$pass"
           printf 'FIRST_USER_PASS=%q\n' "$pass" >> pi-gen/config
           cp -R stage-shulportal pi-gen/
+          cp "out/shulportal-pi_${{ steps.deb.outputs.ver }}_all.deb" pi-gen/stage-shulportal/01-shulportal/shulportal-pi.deb
           touch pi-gen/stage2/SKIP_IMAGES
           cd pi-gen && ./build-docker.sh
       - id: package
@@ -30,7 +37,7 @@ jobs:
           IMAGE=$(ls pi-gen/deploy/*.img.xz)
           if [ "$GITHUB_REF_TYPE" = tag ]; then version=$GITHUB_REF_NAME; else version=dev-${GITHUB_SHA::7}; fi
           name=shulportal-pi-$version
-          mkdir out
+          mkdir -p out
           cp "$IMAGE" "out/$name.img.xz"
           xz -dk "out/$name.img.xz"
           sudo scripts/check-image.sh "out/$name.img"

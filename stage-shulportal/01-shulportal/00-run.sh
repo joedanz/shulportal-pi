@@ -1,9 +1,8 @@
 #!/bin/bash -e
-# ABOUTME: Installs the ShulPortal kiosk files into the image and enables its services.
-# ABOUTME: Runs on the build host with ROOTFS_DIR pointing at the image's root filesystem.
+# ABOUTME: Installs the shulportal-pi package (built by scripts/build-deb.sh) into the image, plus the steps
+# ABOUTME: only a fresh image needs. Runs on the build host with ROOTFS_DIR pointing at the image's root filesystem.
 
-# Copy as root (ownership root:root), keeping the executable bits from git.
-cp -R --preserve=mode,timestamps files/. "${ROOTFS_DIR}/"
+install -m 644 shulportal-pi.deb "${ROOTFS_DIR}/tmp/"
 
 on_chroot << 'CHROOT'
 # Chromium 156.0.8078.73 crashes every page on the Pi, and the archive's index no longer lists the
@@ -22,18 +21,10 @@ a962d6dacb43ab96d4367f3b3a314f7dd7e96485a28ffd4a27146b260994558b  $d/chromium-co
 SUMS
 apt-get install -y --allow-downgrades "$d/chromium.deb" "$d/chromium-common.deb" "$d/chromium-l10n.deb"
 rm -rf "$d"
-id kiosk >/dev/null 2>&1 || useradd --create-home --shell /usr/sbin/nologin --groups video,render,input kiosk
-# No one logs in on the screen; the build-time password is thrown away and the account locked.
-passwd --lock pi
-install -d -o kiosk -g kiosk -m 700 /var/lib/shulportal /var/lib/shulportal/chromium
-# comitup runs its own dnsmasq through NetworkManager; the system ones must stay out of its way.
-systemctl mask dnsmasq.service systemd-resolved.service
-systemctl enable seatd.service shulportal-kiosk.service shulportal-firstboot.service \
-  shulportal-watchdog.timer shulportal-reboot.timer comitup.service
-# Every Pi names its own hotspot on first boot (shulportal-firstboot).
-rm -f /var/lib/comitup/comitup.json
+# The package's postinst creates the kiosk user, enables the services and sets consoleblank=0.
+apt-get install -y /tmp/shulportal-pi.deb
+# Kept for shulportal-update to put back if a later update fails.
+install -m 600 /tmp/shulportal-pi.deb /var/lib/shulportal-update/current.deb
+# Every Pi names its own hotspot on first boot (shulportal-firstboot). Never done by an update.
+rm -f /var/lib/comitup/comitup.json /tmp/shulportal-pi.deb
 CHROOT
-
-# No text-console blanking under the kiosk.
-cmdline="${ROOTFS_DIR}/boot/firmware/cmdline.txt"
-grep -q consoleblank= "$cmdline" || sed -i '1 s/$/ consoleblank=0/' "$cmdline"

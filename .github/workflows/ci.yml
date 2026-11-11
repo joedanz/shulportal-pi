@@ -12,6 +12,6 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y bats shellcheck qrencode jq xz-utils
       - name: shellcheck
         run: |
-          files=$(find stage-shulportal -path '*/files/*' -type f \( -path '*/bin/*' -o -path '*/lib/shulportal/*' -o -path '*/dispatcher.d/*' \); find scripts -type f -name '*.sh' 2>/dev/null; find stage-shulportal -name '*.sh')
+          files=$(find stage-shulportal -path '*/files/*' -type f \( -path '*/bin/*' -o -path '*/lib/shulportal/*' -o -path '*/dispatcher.d/*' \); find scripts -type f -name '*.sh' 2>/dev/null; find stage-shulportal -name '*.sh'; echo debian/preinst debian/postinst debian/postrm)
           shellcheck $files
       - run: bats tests/
