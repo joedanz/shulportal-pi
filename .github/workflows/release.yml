@@ -1,5 +1,5 @@
 # ABOUTME: Builds the ShulPortal Pi image with pi-gen (in Docker) on an arm64 runner and checks it.
-# ABOUTME: A v* tag publishes a GitHub Release; a manual run keeps the image as a workflow artifact.
+# ABOUTME: A v* tag publishes a GitHub Release with the signed update package; a manual run keeps an artifact.
 name: release
 on:
   push:
@@ -17,6 +17,10 @@ jobs:
         name: Build the shulportal-pi package
         run: |
           if [ "$GITHUB_REF_TYPE" = tag ]; then ver=${GITHUB_REF_NAME#v}; else ver=0.0.0+dev.${GITHUB_SHA::7}; fi
+          # A release tag is vX.Y.Z: a TV only ever installs a version of that form.
+          if [ "$GITHUB_REF_TYPE" = tag ] && [[ ! $ver =~ ^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$ ]]; then
+            echo "::error::release tags look like v1.2.3, not $GITHUB_REF_NAME"; exit 1
+          fi
           scripts/build-deb.sh "$ver" out
           echo "ver=$ver" >> "$GITHUB_OUTPUT"
       - name: Build the image with pi-gen
@@ -40,7 +44,7 @@ jobs:
           mkdir -p out
           cp "$IMAGE" "out/$name.img.xz"
           xz -dk "out/$name.img.xz"
-          sudo scripts/check-image.sh "out/$name.img"
+          sudo scripts/check-image.sh "out/$name.img" "${{ steps.deb.outputs.ver }}"
           rm "out/$name.img"
           (cd out && sha256sum "$name.img.xz" > "$name.img.xz.sha256")
           scripts/imager-manifest.sh "out/$name.img.xz" \
@@ -48,6 +52,21 @@ jobs:
             "$(date -u +%F)" > out/shulportal-pi.rpi-imager-manifest
           ls -l out
           echo "version=$version" >> "$GITHUB_OUTPUT"
+      - if: github.ref_type == 'tag'
+        name: Sign the package for remote updates
+        env:
+          PI_SIGNING_KEY: ${{ secrets.PI_SIGNING_KEY }}
+        run: |
+          ver=${{ steps.deb.outputs.ver }}
+          deb=out/shulportal-pi_${ver}_all.deb
+          key=$(mktemp)
+          trap 'rm -f "$key"' EXIT
+          (umask 077 && printf '%s\n' "$PI_SIGNING_KEY" > "$key")
+          scripts/sign-deb.sh "$deb" "$key"
+          # The signature must check out against the public key the TVs carry.
+          openssl pkeyutl -verify -pubin -inkey stage-shulportal/01-shulportal/files/usr/local/share/shulportal/release-key.pem \
+            -rawin -in "$deb" -sigfile "$deb.sig"
+          printf '{"version":"%s"}\n' "$ver" > out/shulportal-pi.json
       - if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}

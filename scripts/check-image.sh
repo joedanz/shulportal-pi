@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # ABOUTME: Checks a built ShulPortal Pi .img before release: kiosk files, enabled services and
-# ABOUTME: first-boot state. Run as root on Linux: check-image.sh IMG. Exits non-zero naming what's wrong.
+# ABOUTME: first-boot state. Run as root on Linux: check-image.sh IMG VERSION. Exits non-zero naming what's wrong.
 set -euo pipefail
 # shellcheck source=/dev/null
 source "$(dirname "$0")/../stage-shulportal/01-shulportal/files/usr/local/lib/shulportal/lib.sh"
 
 img=$1
+version=$2
 loop=$(losetup --find --partscan --show "$img")
 mnt=$(mktemp -d)
 cleanup() {
@@ -44,6 +45,12 @@ contains etc/comitup.conf 'external_callback: /usr/local/bin/comitup-callback'
 contains usr/local/share/shulportal/setup.html.tmpl '{{QR}}'
 contains boot/firmware/cmdline.txt 'consoleblank=0'
 absent var/lib/comitup/comitup.json
+# The kiosk makes the device id at first start; an image must never carry one.
+absent var/lib/shulportal/device-id
+[ -s "$mnt/usr/local/share/shulportal/release-key.pem" ] || fail "no release key for remote updates"
+[ -s "$mnt/var/lib/shulportal-update/current.deb" ] || fail "no current.deb to put back after a failed update"
+grep -qx "Version: $version" <(awk '/^Package: shulportal-pi$/,/^$/' "$mnt/var/lib/dpkg/status") ||
+  fail "shulportal-pi is not version $version"
 for u in seatd.service shulportal-kiosk.service shulportal-firstboot.service \
   shulportal-watchdog.timer shulportal-reboot.timer shulportal-update.timer comitup.service; do
   enabled "$u"
