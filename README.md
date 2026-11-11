@@ -41,6 +41,21 @@ To link a screen to a different sign, open ShulPortal on a phone, rotate that si
   internet.
 - No login: SSH is off and the default account is locked.
 
+## Updates
+
+A TV running 1.1.0 or later updates without a reflash. ShulPortal looks up the newest release every hour, and
+the TV's card on the Digital Signage page shows "Version x.y.z is ready" with **Update this TV**. The Pi asks
+shulportal.com every 5 minutes (`shulportal-update`), downloads the package through it, installs it only if its
+signature matches `release-key.pem` and it's newer than what's running, and restarts. If anything fails it puts the
+previous package back and the card says why. TVs on 1.0.x need one last flash to 1.1.0.
+
+`etc/apt/preferences.d/shulportal-chromium` lists Chromium builds that crash on the Pi, and
+`usr/local/share/shulportal/chromium-fallback` names the build to put back if one of them gets installed.
+
+To release: tag `vX.Y.Z` on main and push the tag. `release.yml` builds the package and the image, signs the package
+with the `PI_SIGNING_KEY` Actions secret, and attaches the image, its checksum, the Imager manifest, the package, its
+`.sig` and `shulportal-pi.json` to the release.
+
 ## Development
 
 - `bats tests/` runs the tests; CI also runs `shellcheck` on every script.

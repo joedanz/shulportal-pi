@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# ABOUTME: Puts Chromium back to the build named in chromium-fallback when the installed one is blocked by the
+# ABOUTME: apt pin (a build that crashes on the Pi). Run by shulportal-update after an install, and by the image build.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
+pin=${SHULPORTAL_PIN_FILE:-/etc/apt/preferences.d/shulportal-chromium}
+fallback=${SHULPORTAL_CHROMIUM_FALLBACK:-/usr/local/share/shulportal/chromium-fallback}
+pool=${SHULPORTAL_POOL:-https://archive.raspberrypi.com/debian/pool/main/c/chromium}
+curl=${SHULPORTAL_CURL:-curl}
+apt_get=${SHULPORTAL_APT_GET:-apt-get}
+dpkg_query=${SHULPORTAL_DPKG_QUERY:-dpkg-query}
+
+# shellcheck disable=SC2016 # ${Version} is dpkg-query's format, not the shell's.
+current=$("$dpkg_query" -W -f='${Version}' chromium 2>/dev/null || true)
+chromium_blocked "$current" "$pin" || exit 0
+
+good=$(sed -n '1s/^version //p' "$fallback")
+fail() {
+  echo "Couldn't put Chromium back to $good."
+  exit 1
+}
+[ -n "$good" ] || fail
+echo "Chromium $current is blocked: putting back $good"
+
+sums=$(sed -n '2,$p' "$fallback")
+d=$(mktemp -d)
+trap 'rm -rf "$d"' EXIT
+names=()
+while read -r _hash name; do
+  [ -n "$name" ] || continue
+  "$curl" -fsSL --max-time 600 -o "$d/$name" "$pool/$name" || fail
+  names+=("$d/$name")
+done <<<"$sums"
+[ "${#names[@]}" -gt 0 ] || fail
+(cd "$d" && sha256sum -c --quiet - <<<"$sums") || fail
+DEBIAN_FRONTEND=noninteractive "$apt_get" -o DPkg::Lock::Timeout=600 -o Dpkg::Options::=--force-confdef \
+  -o Dpkg::Options::=--force-confold install -y --allow-downgrades "${names[@]}" || fail

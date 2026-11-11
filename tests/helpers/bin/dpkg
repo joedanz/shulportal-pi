@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for dpkg: logs its arguments to $STUB_LOG/dpkg.log.
+# ABOUTME: Always succeeds.
+echo "$*" >> "$STUB_LOG/dpkg.log"

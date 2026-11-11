@@ -134,3 +134,20 @@ dispatcher() { "$BATS_TEST_DIRNAME/../stage-shulportal/01-shulportal/files/etc/N
   dispatcher wlan0 dhcp4-change
   [ -z "$(logged refresh)" ]
 }
+
+@test "the nightly restart ignores an install flag hours old (an install that never finished)" {
+  export STUB_CONNECTIVITY=full
+  touch -t 202001010000 "$SHULPORTAL_RUN/installing"
+  run "$SHULPORTAL_BIN/shulportal-nightly-reboot"
+  [ "$status" -eq 0 ]
+  [ "$(logged systemctl)" = reboot ]
+}
+
+@test "the nightly restart skips a night with an install running" {
+  export STUB_CONNECTIVITY=full
+  touch "$SHULPORTAL_RUN/installing"
+  run "$SHULPORTAL_BIN/shulportal-nightly-reboot"
+  [ "$status" -eq 0 ]
+  [ -z "$(logged systemctl)" ]
+  [[ $output == *"an update is installing"* ]] || false
+}

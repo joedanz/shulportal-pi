@@ -1,5 +1,5 @@
 # ABOUTME: Lints every shell script with shellcheck and runs the bats tests on each push and PR.
-# ABOUTME: The image itself is built by release.yml.
+# ABOUTME: The install job installs and updates the real package in Debian; the image itself is built by release.yml.
 name: ci
 on:
   push:
@@ -7,11 +7,19 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Debian, like Pi OS (and its mirrors answer when the runner's Ubuntu ones don't).
+    container: debian:trixie
     steps:
       - uses: actions/checkout@v7
-      - run: sudo apt-get update && sudo apt-get install -y bats shellcheck qrencode jq xz-utils
+      - run: apt-get update && apt-get install -y bats shellcheck qrencode jq xz-utils openssl dpkg
       - name: shellcheck
         run: |
-          files=$(find stage-shulportal -path '*/files/*' -type f \( -path '*/bin/*' -o -path '*/lib/shulportal/*' -o -path '*/dispatcher.d/*' \); find scripts -type f -name '*.sh' 2>/dev/null; find stage-shulportal -name '*.sh')
+          files=$(find stage-shulportal -path '*/files/*' -type f \( -path '*/bin/*' -o -path '*/lib/shulportal/*' -o -path '*/dispatcher.d/*' \); find scripts -type f -name '*.sh' 2>/dev/null; find stage-shulportal -name '*.sh'; echo debian/preinst debian/postinst debian/postrm tests/install/run.sh)
           shellcheck $files
       - run: bats tests/
+  install:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install and update the package in Debian trixie
+        run: docker run --rm -v "$PWD":/w -w /w debian:trixie bash tests/install/run.sh

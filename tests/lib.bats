@@ -97,3 +97,20 @@ setup() {
   run wired_should_stop_comitup full no;  [ "$output" = "no" ]
   run wired_should_stop_comitup none yes; [ "$output" = "no" ]
 }
+
+@test "ensure_device_id makes a 32-hex id once and keeps it" {
+  f="$BATS_TEST_TMPDIR/state/device-id"
+  mkdir -p "$BATS_TEST_TMPDIR/state"
+  first=$(ensure_device_id "$f")
+  [[ $first =~ ^[0-9a-f]{32}$ ]] || false
+  [ "$(ensure_device_id "$f")" = "$first" ]
+  [ "$(cat "$f")" = "$first" ]
+  [ "$(stat -c %a "$f" 2>/dev/null || stat -f %Lp "$f")" = 600 ]
+}
+
+@test "ensure_device_id replaces a malformed id" {
+  f="$BATS_TEST_TMPDIR/device-id"
+  echo nope > "$f"
+  id=$(ensure_device_id "$f")
+  [[ $id =~ ^[0-9a-f]{32}$ ]] || false
+}

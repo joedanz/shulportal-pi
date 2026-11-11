@@ -20,6 +20,8 @@ mkdir -p "$run"
 # Callers (comitup, NetworkManager, the watchdog) can fire together; take turns.
 exec 9>"$run/refresh.lock"
 if command -v flock >/dev/null; then flock 9; fi
+# shulportal-update owns the screen while it installs, and puts things back itself when it's done.
+if [ -e "$run/installing" ]; then exit 0; fi
 
 # The name comitup really broadcasts comes from its id; before first boot writes it, use the serial.
 hotspot_id() {

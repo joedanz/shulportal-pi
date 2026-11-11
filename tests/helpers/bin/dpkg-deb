@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for dpkg-deb -f DEB FIELD: Package is shulportal-pi; Version is $STUB_DEB_VERSION,
+# ABOUTME: or else the version in the file's name (shulportal-pi_<ver>_all.deb).
+[ "$1" = -f ] || exit 2
+case $3 in
+  Package) echo shulportal-pi ;;
+  Version) v=${2##*/shulportal-pi_}; echo "${STUB_DEB_VERSION:-${v%_all.deb}}" ;;
+  *) exit 1 ;;
+esac

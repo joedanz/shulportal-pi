@@ -5,6 +5,13 @@ set -euo pipefail
 
 systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
 nmcli=${SHULPORTAL_NMCLI:-nmcli}
+run=${SHULPORTAL_RUN:-/run/shulportal}
+
+# shulportal-update restarts the Pi itself once an install is done (a flag hours old is an install that never finished).
+if [ -n "$(find "$run/installing" -mmin -120 2>/dev/null)" ]; then
+  echo "an update is installing: skipping tonight's restart"
+  exit 0
+fi
 
 if [ "$("$nmcli" networking connectivity check 2>/dev/null || echo unknown)" != full ]; then
   echo "no internet: skipping tonight's restart"

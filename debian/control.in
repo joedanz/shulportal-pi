@@ -1,0 +1,11 @@
+Package: shulportal-pi
+Version: @VERSION@
+Architecture: all
+Maintainer: ShulPortal <joedanz@users.noreply.github.com>
+Pre-Depends: comitup
+Depends: cage, seatd, chromium, qrencode, unattended-upgrades, comitup, curl, openssl
+Section: misc
+Priority: optional
+Description: ShulPortal lobby TV kiosk
+ Shows a ShulPortal sign full screen, with Wi-Fi setup from a phone and
+ remote updates from the ShulPortal admin page.

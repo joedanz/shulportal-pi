@@ -1,0 +1,28 @@
+#!/bin/sh
+# ABOUTME: Sets up a Pi for the kiosk after shulportal-pi installs or updates. Runs on every update, so each
+# ABOUTME: step is safe to repeat, and it never touches setup state (comitup's id, the browser profile, the device id).
+set -e
+[ "$1" = configure ] || exit 0
+
+if ! id kiosk >/dev/null 2>&1; then
+  groups=
+  for g in video render input; do
+    if getent group "$g" >/dev/null; then groups=${groups:+$groups,}$g; fi
+  done
+  useradd --create-home --shell /usr/sbin/nologin ${groups:+--groups "$groups"} kiosk
+fi
+# No one logs in on the screen; the build-time password is thrown away and the account locked.
+if id pi >/dev/null 2>&1; then passwd --lock pi >/dev/null; fi
+install -d -o kiosk -g kiosk -m 700 /var/lib/shulportal /var/lib/shulportal/chromium
+install -d -m 700 /var/lib/shulportal-update
+
+# comitup runs its own dnsmasq through NetworkManager; the system ones must stay out of its way.
+systemctl mask dnsmasq.service systemd-resolved.service
+# Only on a running Pi (not in the image build's chroot), and never fatal there.
+if [ -d /run/systemd/system ]; then systemctl daemon-reload || true; fi
+systemctl enable seatd.service shulportal-kiosk.service shulportal-firstboot.service \
+  shulportal-watchdog.timer shulportal-reboot.timer shulportal-update.timer comitup.service
+
+# No text-console blanking under the kiosk.
+cmdline=/boot/firmware/cmdline.txt
+if [ -f "$cmdline" ] && ! grep -q consoleblank= "$cmdline"; then sed -i '1 s/$/ consoleblank=0/' "$cmdline"; fi

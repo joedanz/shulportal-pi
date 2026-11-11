@@ -1,6 +1,6 @@
 # shellcheck shell=bash
-# ABOUTME: Pure decision functions for the ShulPortal Pi (page choice, watchdog, hotspot name).
-# ABOUTME: Sourced by the kiosk, refresh, watchdog and network scripts; does no I/O of its own.
+# ABOUTME: Decision functions for the ShulPortal Pi (page choice, watchdog, hotspot name, updates), plus the few
+# ABOUTME: small file helpers they need (device id, setup page). Sourced by the kiosk, refresh, watchdog and updater.
 
 # Seconds offline before a showing display gives way to setup, or Ethernet's stopped comitup restarts.
 SHULPORTAL_OFFLINE_SECS=${SHULPORTAL_OFFLINE_SECS:-300}
@@ -110,4 +110,68 @@ render_setup_page() {
   page=${page//'{{QR}}'/"$qr"}
   printf '%s\n' "$page" > "$out.tmp"
   mv "$out.tmp" "$out"
+}
+
+# ensure_device_id FILE: prints this Pi's device id (32 lowercase hex, 128 random bits), creating FILE (mode 600)
+# the first time. ShulPortal knows the Pi by it for remote updates, so it's a secret like a TV link: never log it.
+ensure_device_id() {
+  local f=$1 id
+  id=$(cat "$f" 2>/dev/null || true)
+  if [[ ! $id =~ ^[0-9a-f]{32}$ ]]; then
+    id=$(od -An -tx1 -N16 /dev/urandom | tr -d ' \n')
+    [[ $id =~ ^[0-9a-f]{32}$ ]] || return 1
+    (umask 077 && printf '%s\n' "$id" > "$f.tmp") && mv "$f.tmp" "$f" || return 1
+  fi
+  printf '%s\n' "$id"
+}
+
+# is_version V: V is a release version, x.y.z with up to 4 digits each (dev builds aren't).
+is_version() {
+  [[ $1 =~ ^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$ ]]
+}
+
+# version_gt A B: succeeds when release version A is newer than B (both x.y.z; 08 is eight, not octal).
+version_gt() {
+  local -a a b
+  local i
+  IFS=. read -r -a a <<<"$1"
+  IFS=. read -r -a b <<<"$2"
+  for i in 0 1 2; do
+    if ((10#${a[i]} > 10#${b[i]})); then return 0; fi
+    if ((10#${a[i]} < 10#${b[i]})); then return 1; fi
+  done
+  return 1
+}
+
+# install_target REPLY CURRENT: the version ShulPortal's check reply asks this Pi to install, printed only
+# when the reply is exactly {"install":"x.y.z"}, CURRENT is a release version, and the target is newer.
+# Anything else (an HTML page, a dev build, an older version, junk) prints nothing.
+install_target() {
+  local v
+  v=$(printf '%s\n' "$1" | sed -n 's/^[[:space:]]*{[[:space:]]*"install"[[:space:]]*:[[:space:]]*"\([0-9.]*\)"[[:space:]]*}[[:space:]]*$/\1/p' | head -n1)
+  if is_version "$v" && is_version "$2" && version_gt "$v" "$2"; then printf '%s\n' "$v"; fi
+  return 0
+}
+
+# check_body DEVICE VERSION [FAILED_VERSION REASON]: the JSON body of a check (see ShulPortal's piHttp.ts).
+# The reason loses any quote, backslash or control character, so it can't break the JSON.
+check_body() {
+  if [ $# -ge 4 ]; then
+    local reason
+    reason=$(printf '%s' "$4" | tr -d '"\134\000-\037' | cut -c1-120)
+    printf '{"device":"%s","version":"%s","failed":{"version":"%s","reason":"%s"}}\n' "$1" "$2" "$3" "$reason"
+  else
+    printf '{"device":"%s","version":"%s"}\n' "$1" "$2"
+  fi
+}
+
+# chromium_blocked VERSION PINFILE: succeeds when Chromium VERSION matches any "Pin: version" pattern in
+# PINFILE (an apt preferences file whose entries keep known-bad builds off the Pi).
+chromium_blocked() {
+  local v=$1 pattern
+  while read -r pattern; do
+    # shellcheck disable=SC2254 # the pin's version is a glob, as apt reads it.
+    case $v in $pattern) return 0 ;; esac
+  done < <(sed -n 's/^Pin:[[:space:]]*version[[:space:]]\{1,\}//p' "$2")
+  return 1
 }

@@ -1,0 +1,9 @@
+#!/bin/sh
+# ABOUTME: After shulportal-pi is removed: gives comitup its own /etc/comitup.conf back.
+# ABOUTME: An upgrade keeps the divert, since the new version ships the same file.
+set -e
+case "$1" in
+  remove | purge | abort-install)
+    dpkg-divert --package shulportal-pi --remove --rename --divert /etc/comitup.conf.comitup /etc/comitup.conf
+    ;;
+esac

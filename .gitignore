@@ -3,3 +3,5 @@ deploy/
 work/
 *.img
 *.img.xz
+stage-shulportal/01-shulportal/shulportal-pi.deb
+out/
