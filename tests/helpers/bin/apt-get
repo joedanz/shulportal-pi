@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # ABOUTME: Test stand-in for apt-get: logs its arguments to $STUB_LOG/apt-get.log.
-# ABOUTME: Fails when its arguments contain $STUB_APT_FAIL (a file name, say).
+# ABOUTME: Fails when its arguments contain $STUB_APT_FAIL; kills its caller when they contain $STUB_APT_KILL.
 echo "$*" >> "$STUB_LOG/apt-get.log"
+echo "${DEBIAN_FRONTEND:-}" >> "$STUB_LOG/apt-env.log"
+# Stands in for the updater being killed mid-install (systemd's timeout, say).
+if [ -n "${STUB_APT_KILL:-}" ] && [[ $* == *"$STUB_APT_KILL"* ]]; then kill -TERM "$PPID"; sleep 1; exit 1; fi
 if [ -n "${STUB_APT_FAIL:-}" ] && [[ $* == *"$STUB_APT_FAIL"* ]]; then exit 100; fi
 exit 0

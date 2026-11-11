@@ -37,7 +37,9 @@ check() { run "$SHULPORTAL_BIN/shulportal-chromium-check"; }
   for n in "chromium_${GOOD}_arm64.deb" "chromium-common_${GOOD}_arm64.deb" "chromium-l10n_${GOOD}_all.deb"; do
     [[ $(logged curl) == *"https://pool.test/c/chromium/$n"* ]] || { echo "not fetched: $n"; false; }
   done
-  [[ $(logged apt-get) == "-o DPkg::Lock::Timeout=600 install -y --allow-downgrades "*"chromium_${GOOD}_arm64.deb "*"chromium-common_${GOOD}_arm64.deb "*"chromium-l10n_${GOOD}_all.deb" ]] || false
+  [[ $(logged apt-get) == "-o DPkg::Lock::Timeout=600 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "* ]] || false
+  [ "$(logged apt-env)" = noninteractive ]
+  [[ $(logged apt-get) == *"install -y --allow-downgrades "*"chromium_${GOOD}_arm64.deb "*"chromium-common_${GOOD}_arm64.deb "*"chromium-l10n_${GOOD}_all.deb" ]] || false
 }
 
 @test "a hash mismatch installs nothing and fails with the reason" {

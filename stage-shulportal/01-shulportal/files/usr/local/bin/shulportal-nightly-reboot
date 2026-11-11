@@ -7,8 +7,8 @@ systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
 nmcli=${SHULPORTAL_NMCLI:-nmcli}
 run=${SHULPORTAL_RUN:-/run/shulportal}
 
-# shulportal-update restarts the Pi itself once an install is done.
-if [ -e "$run/installing" ]; then
+# shulportal-update restarts the Pi itself once an install is done (a flag hours old is an install that never finished).
+if [ -n "$(find "$run/installing" -mmin -120 2>/dev/null)" ]; then
   echo "an update is installing: skipping tonight's restart"
   exit 0
 fi

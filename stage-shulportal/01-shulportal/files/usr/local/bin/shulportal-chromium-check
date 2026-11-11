@@ -35,4 +35,5 @@ while read -r _hash name; do
 done <<<"$sums"
 [ "${#names[@]}" -gt 0 ] || fail
 (cd "$d" && sha256sum -c --quiet - <<<"$sums") || fail
-"$apt_get" -o DPkg::Lock::Timeout=600 install -y --allow-downgrades "${names[@]}" || fail
+DEBIAN_FRONTEND=noninteractive "$apt_get" -o DPkg::Lock::Timeout=600 -o Dpkg::Options::=--force-confdef \
+  -o Dpkg::Options::=--force-confold install -y --allow-downgrades "${names[@]}" || fail

@@ -1,10 +1,9 @@
 # ABOUTME: One remote-update check (shulportal-update): asks ShulPortal, and installs a release when asked.
-# ABOUTME: Started by shulportal-update.timer; an install, with its downloads, gets up to 30 minutes.
+# ABOUTME: Started by shulportal-update.timer; an install, with downloads, lock waits and a Chromium put-back, gets 90 minutes.
 [Unit]
 Description=ShulPortal remote update check
-After=network-online.target
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/shulportal-update
-TimeoutStartSec=30min
+TimeoutStartSec=90min

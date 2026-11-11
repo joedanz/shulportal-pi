@@ -72,8 +72,9 @@ release() {
   [ "$(logged check)" = "{\"device\":\"$ID\",\"version\":\"1.1.0\"}" ]
 }
 
-@test "a Pi on a dev version reports 0.0.0 and installs nothing" {
-  export STUB_PI_VERSION=0.0.0+dev.abc1234 STUB_REPLY='{"install":"1.1.1"}'
+@test "a Pi on a dev version reports 0.0.0 and installs nothing, even a good release" {
+  release 1.1.1
+  export STUB_PI_VERSION=0.0.0+dev.abc1234
   update
   [ "$status" -eq 0 ]
   [[ $(logged check) == *'"version":"0.0.0"'* ]] || false
@@ -107,7 +108,10 @@ release() {
   [ "$status" -eq 0 ]
   [[ $(logged curl) == *"https://shulportal.test/api/pi/release/1.1.1/shulportal-pi_1.1.1_all.deb"* ]] || false
   [[ $(logged curl) == *"https://shulportal.test/api/pi/release/1.1.1/shulportal-pi_1.1.1_all.deb.sig"* ]] || false
-  [[ $(logged apt-get) == "-o DPkg::Lock::Timeout=600 install -y $SHULPORTAL_UPDATE_DIR/incoming/shulportal-pi_1.1.1_all.deb" ]] || false
+  [[ $(logged apt-get) == *" install -y $SHULPORTAL_UPDATE_DIR/incoming/shulportal-pi_1.1.1_all.deb" ]] || false
+  # Unattended: apt waits for its lock, and never stops to ask about a changed config file.
+  [[ $(logged apt-get) == "-o DPkg::Lock::Timeout=600 -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold "* ]] || false
+  [ "$(logged apt-env)" = noninteractive ]
   [ "$(cat "$SHULPORTAL_UPDATE_DIR/current.deb")" = "package 1.1.1" ]
   [ "$(logged chromium-check)" = ran ]
   [ "$(logged systemctl)" = "restart shulportal-kiosk
@@ -200,7 +204,34 @@ SH
   grep -qx 'OnUnitActiveSec=5min' "$t"
   grep -qx 'RandomizedDelaySec=30s' "$t"
   grep -qx 'Type=oneshot' "$s"
-  grep -qx 'TimeoutStartSec=30min' "$s"
+  # Downloads, apt's lock waits and a Chromium put-back all fit, with room to spare.
+  grep -qx 'TimeoutStartSec=90min' "$s"
   grep -qx 'ExecStart=/usr/local/bin/shulportal-update' "$s"
   grep -q 'shulportal-update.timer' "$BATS_TEST_DIRNAME/../debian/postinst"
+}
+
+@test "an install killed partway gives the screen back and puts the old package back" {
+  release 1.1.1
+  export STUB_APT_KILL=shulportal-pi_1.1.1_all.deb
+  update
+  [[ $(logged dpkg) == "--configure -a" ]] || false
+  [[ $(logged apt-get) == *"--reinstall --allow-downgrades $SHULPORTAL_UPDATE_DIR/current.deb"* ]] || false
+  [ ! -e "$SHULPORTAL_RUN/installing" ]
+  [ "$(logged refresh-state)" = "page= installing=no" ]
+  [[ $(tail -n1 "$STUB_LOG/check.log") == *'"reason":"The update was interrupted."'* ]] || false
+  [ "$(cat "$SHULPORTAL_UPDATE_DIR/current.deb")" = "old package" ]
+}
+
+@test "a half-installed package is put back before anything else" {
+  export STUB_PI_STATUS="install ok half-configured"
+  update
+  [ "$status" -eq 0 ]
+  [[ $(logged dpkg) == "--configure -a" ]] || false
+  [[ $(logged apt-get) == *"--reinstall --allow-downgrades $SHULPORTAL_UPDATE_DIR/current.deb"* ]] || false
+}
+
+@test "a package that's installed properly is left alone" {
+  update
+  [ -z "$(logged dpkg)" ]
+  [ -z "$(logged apt-get)" ]
 }
