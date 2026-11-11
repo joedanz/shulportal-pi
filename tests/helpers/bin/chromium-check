@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for shulportal-chromium-check: logs that it ran; exits $STUB_CHROMIUM_CHECK_EXIT,
+# ABOUTME: printing the real script's reason line when that's non-zero.
+echo ran >> "$STUB_LOG/chromium-check.log"
+code=${STUB_CHROMIUM_CHECK_EXIT:-0}
+if [ "$code" -ne 0 ]; then echo "apt said no"; echo "Couldn't put Chromium back to 156.0.8078.79-1~deb13u1+rpt1."; fi
+exit "$code"

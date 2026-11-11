@@ -21,7 +21,7 @@ systemctl mask dnsmasq.service systemd-resolved.service
 # Only on a running Pi (not in the image build's chroot), and never fatal there.
 if [ -d /run/systemd/system ]; then systemctl daemon-reload || true; fi
 systemctl enable seatd.service shulportal-kiosk.service shulportal-firstboot.service \
-  shulportal-watchdog.timer shulportal-reboot.timer comitup.service
+  shulportal-watchdog.timer shulportal-reboot.timer shulportal-update.timer comitup.service
 
 # No text-console blanking under the kiosk.
 cmdline=/boot/firmware/cmdline.txt

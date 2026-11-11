@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for apt-get: logs its arguments to $STUB_LOG/apt-get.log.
+# ABOUTME: Fails when its arguments contain $STUB_APT_FAIL (a file name, say).
+echo "$*" >> "$STUB_LOG/apt-get.log"
+if [ -n "${STUB_APT_FAIL:-}" ] && [[ $* == *"$STUB_APT_FAIL"* ]]; then exit 100; fi
+exit 0

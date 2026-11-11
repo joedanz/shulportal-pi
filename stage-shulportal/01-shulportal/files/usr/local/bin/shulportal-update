@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# ABOUTME: Remote updates (root, every 5 minutes from shulportal-update.timer): asks ShulPortal whether to install
+# ABOUTME: a newer release, then downloads it, checks its signature, installs it and restarts; on failure, puts it back.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+source "${SHULPORTAL_LIB:-/usr/local/lib/shulportal/lib.sh}"
+run=${SHULPORTAL_RUN:-/run/shulportal}
+state=${SHULPORTAL_STATE:-/var/lib/shulportal}
+update_dir=${SHULPORTAL_UPDATE_DIR:-/var/lib/shulportal-update}
+api=${SHULPORTAL_API:-https://shulportal.com}
+key=${SHULPORTAL_RELEASE_KEY:-/usr/local/share/shulportal/release-key.pem}
+curl=${SHULPORTAL_CURL:-curl}
+apt_get=${SHULPORTAL_APT_GET:-apt-get}
+dpkg=${SHULPORTAL_DPKG:-dpkg}
+dpkg_query=${SHULPORTAL_DPKG_QUERY:-dpkg-query}
+dpkg_deb=${SHULPORTAL_DPKG_DEB:-dpkg-deb}
+openssl=${SHULPORTAL_OPENSSL:-openssl}
+systemctl=${SHULPORTAL_SYSTEMCTL:-systemctl}
+refresh=${SHULPORTAL_REFRESH:-/usr/local/bin/shulportal-refresh}
+chromium_check=${SHULPORTAL_CHROMIUM_CHECK:-/usr/local/bin/shulportal-chromium-check}
+apt_opts=(-o DPkg::Lock::Timeout=600)
+
+mkdir -p "$update_dir" "$run"
+exec 9>"$update_dir/lock"
+# Only one at a time: an install can outlast the timer's 5 minutes.
+if command -v flock >/dev/null; then flock -n 9 || exit 0; fi
+
+# The kiosk writes the id at its first start; until then there's nothing to ask about.
+device=$(cat "$state/device-id" 2>/dev/null || true)
+[[ $device =~ ^[0-9a-f]{32}$ ]] || exit 0
+# shellcheck disable=SC2016 # ${Version} is dpkg-query's format, not the shell's.
+version=$("$dpkg_query" -W -f='${Version}' shulportal-pi 2>/dev/null || true)
+is_version "$version" || version=0.0.0
+
+# check BODY: posts a check and prints the reply; fails when ShulPortal can't be reached.
+check() {
+  "$curl" -fsS --max-time 20 -H 'Content-Type: application/json' -d "$1" "$api/api/pi/check"
+}
+
+# A failure the last run couldn't report goes with this check, once.
+body=$(check_body "$device" "$version")
+if [ -s "$update_dir/failed" ]; then
+  { read -r failed_version; read -r failed_reason; } < "$update_dir/failed" || true
+  body=$(check_body "$device" "$version" "${failed_version:-}" "${failed_reason:-}")
+fi
+reply=$(check "$body") || exit 0
+rm -f "$update_dir/failed"
+
+target=$(install_target "$reply" "$version")
+[ -n "$target" ] || exit 0
+
+incoming="$update_dir/incoming"
+deb="$incoming/shulportal-pi_${target}_all.deb"
+
+# put_back: after a failed install, the package from before (dpkg may have been left mid-way).
+put_back() {
+  "$dpkg" --configure -a || true
+  "$apt_get" "${apt_opts[@]}" install -y --reinstall --allow-downgrades "$update_dir/current.deb" || true
+}
+
+# fail REASON: gives the screen back, then reports the failure (or leaves it for the next check).
+fail() {
+  printf '%s\n%s\n' "$target" "$1" > "$update_dir/failed"
+  rm -rf "$incoming"
+  rm -f "$run/installing" "$run/page"
+  "$refresh" || true
+  if check "$(check_body "$device" "$version" "$target" "$1")" >/dev/null; then rm -f "$update_dir/failed"; fi
+  exit 0
+}
+
+# The screen says what's happening, and nothing switches it back mid-install (refresh waits on this).
+touch "$run/installing"
+echo updating > "$run/page"
+"$systemctl" restart shulportal-kiosk || true
+
+rm -rf "$incoming"
+mkdir -p "$incoming"
+url="$api/api/pi/release/$target/shulportal-pi_${target}_all.deb"
+if ! { "$curl" -fsS --max-time 300 -o "$deb" "$url" && "$curl" -fsS --max-time 300 -o "$deb.sig" "$url.sig"; }; then
+  fail "The download didn't finish."
+fi
+"$openssl" pkeyutl -verify -pubin -inkey "$key" -rawin -in "$deb" -sigfile "$deb.sig" >/dev/null 2>&1 ||
+  fail "The download's signature didn't check out."
+if [ "$("$dpkg_deb" -f "$deb" Package 2>/dev/null)" != shulportal-pi ] ||
+  [ "$("$dpkg_deb" -f "$deb" Version 2>/dev/null)" != "$target" ]; then
+  fail "The download wasn't the version asked for."
+fi
+
+if ! "$apt_get" "${apt_opts[@]}" install -y "$deb"; then
+  put_back
+  fail "Installing the new version failed."
+fi
+# The new package's Chromium list may block the installed build and name one to put back.
+if ! chromium_out=$("$chromium_check" 2>&1); then
+  put_back
+  fail "$(printf '%s\n' "$chromium_out" | tail -n1)"
+fi
+
+mv "$deb" "$update_dir/current.deb"
+rm -rf "$incoming"
+"$systemctl" reboot

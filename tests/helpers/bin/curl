@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# ABOUTME: Test stand-in for curl: logs its arguments to $STUB_LOG/curl.log and each POST body to check.log.
+# ABOUTME: A POST prints $STUB_REPLY (fails when $STUB_CURL_OFFLINE=yes); -o FILE URL copies $STUB_FILES/<name of URL>.
+echo "$*" >> "$STUB_LOG/curl.log"
+[ "${STUB_CURL_OFFLINE:-no}" = yes ] && exit 6
+out='' body='' url=''
+while [ $# -gt 0 ]; do
+  case $1 in
+    -o) out=$2; shift ;;
+    -d | --data) body=$2; shift ;;
+    -H | --max-time) shift ;;
+    -*) ;;
+    *) url=$1 ;;
+  esac
+  shift
+done
+if [ -n "$body" ]; then
+  echo "$body" >> "$STUB_LOG/check.log"
+  printf '%s\n' "${STUB_REPLY:-"{}"}"
+  exit 0
+fi
+src="${STUB_FILES:-/nonexistent}/${url##*/}"
+[ -f "$src" ] || exit 22
+cp "$src" "$out"

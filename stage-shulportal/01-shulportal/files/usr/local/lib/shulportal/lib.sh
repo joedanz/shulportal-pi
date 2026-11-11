@@ -124,3 +124,43 @@ ensure_device_id() {
   fi
   printf '%s\n' "$id"
 }
+
+# is_version V: V is a release version, x.y.z with up to 4 digits each (dev builds aren't).
+is_version() {
+  [[ $1 =~ ^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}$ ]]
+}
+
+# version_gt A B: succeeds when release version A is newer than B (both x.y.z; 08 is eight, not octal).
+version_gt() {
+  local -a a b
+  local i
+  IFS=. read -r -a a <<<"$1"
+  IFS=. read -r -a b <<<"$2"
+  for i in 0 1 2; do
+    if ((10#${a[i]} > 10#${b[i]})); then return 0; fi
+    if ((10#${a[i]} < 10#${b[i]})); then return 1; fi
+  done
+  return 1
+}
+
+# install_target REPLY CURRENT: the version ShulPortal's check reply asks this Pi to install, printed only
+# when the reply is exactly {"install":"x.y.z"}, CURRENT is a release version, and the target is newer.
+# Anything else (an HTML page, a dev build, an older version, junk) prints nothing.
+install_target() {
+  local v
+  v=$(printf '%s\n' "$1" | sed -n 's/^[[:space:]]*{[[:space:]]*"install"[[:space:]]*:[[:space:]]*"\([0-9.]*\)"[[:space:]]*}[[:space:]]*$/\1/p' | head -n1)
+  if is_version "$v" && is_version "$2" && version_gt "$v" "$2"; then printf '%s\n' "$v"; fi
+  return 0
+}
+
+# check_body DEVICE VERSION [FAILED_VERSION REASON]: the JSON body of a check (see ShulPortal's piHttp.ts).
+# The reason loses any quote, backslash or control character, so it can't break the JSON.
+check_body() {
+  if [ $# -ge 4 ]; then
+    local reason
+    reason=$(printf '%s' "$4" | tr -d '"\134\000-\037' | cut -c1-120)
+    printf '{"device":"%s","version":"%s","failed":{"version":"%s","reason":"%s"}}\n' "$1" "$2" "$3" "$reason"
+  else
+    printf '{"device":"%s","version":"%s"}\n' "$1" "$2"
+  fi
+}
