@@ -2,6 +2,8 @@
 # ABOUTME: Checks a built ShulPortal Pi .img before release: kiosk files, enabled services and
 # ABOUTME: first-boot state. Run as root on Linux: check-image.sh IMG. Exits non-zero naming what's wrong.
 set -euo pipefail
+# shellcheck source=/dev/null
+source "$(dirname "$0")/../stage-shulportal/01-shulportal/files/usr/local/lib/shulportal/lib.sh"
 
 img=$1
 loop=$(losetup --find --partscan --show "$img")
@@ -28,6 +30,7 @@ for f in usr/bin/cage usr/bin/chromium usr/bin/qrencode usr/sbin/dnsmasq \
   usr/local/bin/shulportal-nightly-reboot \
   usr/local/bin/shulportal-kiosk usr/local/bin/shulportal-refresh usr/local/bin/comitup-callback \
   usr/local/bin/shulportal-watchdog usr/local/bin/shulportal-firstboot \
+  usr/local/bin/shulportal-update usr/local/bin/shulportal-chromium-check \
   etc/NetworkManager/dispatcher.d/90-shulportal; do
   executable "$f"
 done
@@ -42,7 +45,7 @@ contains usr/local/share/shulportal/setup.html.tmpl '{{QR}}'
 contains boot/firmware/cmdline.txt 'consoleblank=0'
 absent var/lib/comitup/comitup.json
 for u in seatd.service shulportal-kiosk.service shulportal-firstboot.service \
-  shulportal-watchdog.timer shulportal-reboot.timer comitup.service; do
+  shulportal-watchdog.timer shulportal-reboot.timer shulportal-update.timer comitup.service; do
   enabled "$u"
 done
 masked dnsmasq.service
@@ -52,8 +55,10 @@ if [ -L "$mnt/etc/resolv.conf" ] && [[ $(readlink "$mnt/etc/resolv.conf") == *sy
 fi
 contains etc/systemd/system/apt-daily-upgrade.timer.d/shulportal.conf '03:15'
 contains etc/apt/preferences.d/shulportal-chromium 'Pin: version 1:156.0.8078.73-'
-grep -q '^Version: 1:156.0.8078.47-' <(awk '/^Package: chromium$/,/^$/' "$mnt/var/lib/dpkg/status") ||
-  fail "chromium is not 156.0.8078.47 (156.0.8078.73 crashes on the Pi)"
+chromium=$(awk '/^Package: chromium$/,/^$/' "$mnt/var/lib/dpkg/status" | sed -n 's/^Version: //p')
+if chromium_blocked "$chromium" "$mnt/etc/apt/preferences.d/shulportal-chromium"; then
+  fail "chromium $chromium is a blocked build (see etc/apt/preferences.d/shulportal-chromium)"
+fi
 
 kiosk_uid=$(awk -F: '$1 == "kiosk" { print $3 }' "$mnt/etc/passwd")
 [ -n "$kiosk_uid" ] || fail "no kiosk user"

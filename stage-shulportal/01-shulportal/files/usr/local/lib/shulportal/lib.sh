@@ -164,3 +164,14 @@ check_body() {
     printf '{"device":"%s","version":"%s"}\n' "$1" "$2"
   fi
 }
+
+# chromium_blocked VERSION PINFILE: succeeds when Chromium VERSION matches any "Pin: version" pattern in
+# PINFILE (an apt preferences file whose entries keep known-bad builds off the Pi).
+chromium_blocked() {
+  local v=$1 pattern
+  while read -r pattern; do
+    # shellcheck disable=SC2254 # the pin's version is a glob, as apt reads it.
+    case $v in $pattern) return 0 ;; esac
+  done < <(sed -n 's/^Pin:[[:space:]]*version[[:space:]]\{1,\}//p' "$2")
+  return 1
+}
