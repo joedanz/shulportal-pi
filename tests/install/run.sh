@@ -30,7 +30,14 @@ apt-get install -y -qq --reinstall "$work/shulportal-pi_9.0.0_all.deb" >/dev/nul
 grep -q 'ShulPortal-Setup-' /etc/comitup.conf || { echo "FAIL: /etc/comitup.conf isn't ours"; exit 1; }
 # comitup's own copy is kept aside, when its package ships one.
 if dpkg -L comitup | grep -qx /etc/comitup.conf; then
-  [ -f /etc/comitup.conf.comitup ] || { echo "FAIL: comitup's own config is gone"; exit 1; }
+  [ -f /etc/comitup.conf.comitup ] || {
+    echo "FAIL: comitup's own config is gone"
+    dpkg-divert --list | grep comitup || true
+    ls -la /etc/comitup* || true
+    grep -n comitup.conf /var/lib/dpkg/info/comitup.conffiles /var/lib/dpkg/info/comitup.list 2>/dev/null || true
+    grep -nE 'Unpacking|Setting up|Preparing' /var/log/dpkg.log /var/log/apt/term.log 2>/dev/null | grep -E 'comitup|shulportal' | head -20 || true
+    exit 1
+  }
 fi
 id kiosk >/dev/null || { echo "FAIL: no kiosk user"; exit 1; }
 
