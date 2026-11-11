@@ -33,14 +33,15 @@ if command -v flock >/dev/null; then flock -n 9 || exit 0; fi
 device=$(cat "$state/device-id" 2>/dev/null || true)
 [[ $device =~ ^[0-9a-f]{32}$ ]] || exit 0
 # put_back: the package from before, after a failed or interrupted install (dpkg may have been left mid-way).
+# Fails when even the old package wouldn't go back on.
 put_back() {
   "$dpkg" --configure -a || true
-  "$apt_get" "${apt_opts[@]}" install -y --reinstall --allow-downgrades "$update_dir/current.deb" || true
+  "$apt_get" "${apt_opts[@]}" install -y --reinstall --allow-downgrades "$update_dir/current.deb"
 }
 
 # An install that was cut off (power, a kill) leaves the package half-installed: put the old one back first.
 # shellcheck disable=SC2016 # ${Status} and ${Version} are dpkg-query's formats, not the shell's.
-if [ "$("$dpkg_query" -W -f='${Status}' shulportal-pi 2>/dev/null || true)" != "install ok installed" ]; then put_back; fi
+if [ "$("$dpkg_query" -W -f='${Status}' shulportal-pi 2>/dev/null || true)" != "install ok installed" ]; then put_back || true; fi
 # shellcheck disable=SC2016
 version=$("$dpkg_query" -W -f='${Version}' shulportal-pi 2>/dev/null || true)
 # A dev build reports 0.0.0 so its card shows something, but never installs a release (install_target refuses it).
@@ -86,7 +87,7 @@ fail() {
 # Cut off mid-install (systemd's timeout, a failing mv or reboot): never leave the TV on the updating page.
 interrupted() {
   [ "$finished" = no ] && [ "$screen" = yes ] || return 0
-  if [ "$installing" = yes ]; then put_back; fi
+  if [ "$installing" = yes ]; then put_back || true; fi
   fail "The update was interrupted."
 }
 trap interrupted EXIT
@@ -106,21 +107,29 @@ if [ "$("$dpkg_deb" -f "$deb" Package 2>/dev/null)" != shulportal-pi ] ||
   fail "The download wasn't the version asked for."
 fi
 
-# The screen says what's happening, and nothing switches it back mid-install (refresh waits on this).
+# The screen says what's happening, and nothing switches it back mid-install. Taken between refreshes (their
+# lock), so one already running can't write its page over this one; later ones see the flag and leave it be.
+exec 8>"$run/refresh.lock"
+if command -v flock >/dev/null; then flock 8; fi
 screen=yes
 touch "$run/installing"
 echo updating > "$run/page"
+exec 8>&-
 "$systemctl" restart shulportal-kiosk || true
 
 installing=yes
+# roll_back REASON: puts the old package back, then fails with REASON (or says the put-back failed too).
+roll_back() {
+  if put_back; then fail "$1"; fi
+  fail "Installing failed, and the old version couldn't be put back."
+}
+
 if ! "$apt_get" "${apt_opts[@]}" install -y "$deb"; then
-  put_back
-  fail "Installing the new version failed."
+  roll_back "Installing the new version failed."
 fi
 # The new package's Chromium list may block the installed build and name one to put back.
 if ! chromium_out=$("$chromium_check" 2>&1); then
-  put_back
-  fail "$(printf '%s\n' "$chromium_out" | tail -n1)"
+  roll_back "$(printf '%s\n' "$chromium_out" | tail -n1)"
 fi
 
 mv "$deb" "$update_dir/current.deb"

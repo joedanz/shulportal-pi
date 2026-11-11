@@ -235,3 +235,25 @@ SH
   [ -z "$(logged dpkg)" ]
   [ -z "$(logged apt-get)" ]
 }
+
+@test "a failed install whose put-back fails too says so" {
+  release 1.1.1
+  export STUB_APT_FAIL=.deb
+  update
+  [ "$status" -eq 0 ]
+  [[ $(tail -n1 "$STUB_LOG/check.log") == *"\"reason\":\"Installing failed, and the old version couldn't be put back.\""* ]] || false
+}
+
+@test "the updater takes the screen only between refreshes" {
+  command -v flock >/dev/null || skip "no flock"
+  release 1.1.1
+  flock "$SHULPORTAL_RUN/refresh.lock" sleep 3 &
+  sleep 0.2
+  start=$SECONDS
+  update
+  took=$((SECONDS - start))
+  wait
+  [ "$status" -eq 0 ]
+  # It waited for the refresh holding the lock before it wrote the updating page.
+  [ "$took" -ge 2 ]
+}

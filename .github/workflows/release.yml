@@ -23,17 +23,23 @@ jobs:
             echo "::error::release tags look like v1.2.3, not $GITHUB_REF_NAME"; exit 1
           fi
           scripts/build-deb.sh "$ver" out
+          deb=shulportal-pi_${ver}_all.deb
           echo "ver=$ver" >> "$GITHUB_OUTPUT"
+          echo "deb=$deb" >> "$GITHUB_OUTPUT"
+          # Checked again before signing: nothing that runs in between (pi-gen, as root) may swap the package.
+          echo "sha=$(sha256sum "out/$deb" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
       - name: Build the image with pi-gen
         run: |
-          git clone --depth 1 --branch arm64 https://github.com/RPi-Distro/pi-gen.git pi-gen
+          # pi-gen runs as root before the signing step, so it's pinned; move the pin on purpose, not by accident.
+          git clone --branch arm64 https://github.com/RPi-Distro/pi-gen.git pi-gen
+          git -C pi-gen checkout --detach c0d2c9f2cffc08bc56850b0a3eb23178f4226e8a
           cp config pi-gen/config
           # pi-gen needs a first-user password to skip the console rename prompt; nobody keeps it.
           pass=$(openssl rand -base64 32)
           echo "::add-mask::$pass"
           printf 'FIRST_USER_PASS=%q\n' "$pass" >> pi-gen/config
           cp -R stage-shulportal pi-gen/
-          cp "out/shulportal-pi_${{ steps.deb.outputs.ver }}_all.deb" pi-gen/stage-shulportal/01-shulportal/shulportal-pi.deb
+          cp "out/${{ steps.deb.outputs.deb }}" pi-gen/stage-shulportal/01-shulportal/shulportal-pi.deb
           touch pi-gen/stage2/SKIP_IMAGES
           cd pi-gen && ./build-docker.sh
       - id: package
@@ -59,7 +65,8 @@ jobs:
           PI_SIGNING_KEY: ${{ secrets.PI_SIGNING_KEY }}
         run: |
           ver=${{ steps.deb.outputs.ver }}
-          deb=out/shulportal-pi_${ver}_all.deb
+          deb=out/${{ steps.deb.outputs.deb }}
+          echo "${{ steps.deb.outputs.sha }}  $deb" | sha256sum -c -
           key=$(mktemp)
           trap 'rm -f "$key"' EXIT
           (umask 077 && printf '%s\n' "$PI_SIGNING_KEY" > "$key")
@@ -73,8 +80,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version=${{ steps.package.outputs.version }}
-          # A re-run of the same tag replaces the files instead of failing.
+          deb=${{ steps.deb.outputs.deb }}
           if gh release view "$version" >/dev/null 2>&1; then
+            # A re-run replaces the image files, but never a published package: TVs may be mid-download, and the
+            # relay's CDN keeps release files for good. A rebuilt package (different bytes) stays out.
+            if gh release view "$version" --json assets -q '.assets[].name' | grep -qx "$deb"; then
+              rm "out/$deb" "out/$deb.sig" out/shulportal-pi.json
+            fi
             gh release upload "$version" out/* --clobber
           else
             gh release create "$version" out/* --title "ShulPortal Pi $version" --generate-notes
