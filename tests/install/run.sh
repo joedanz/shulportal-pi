@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ABOUTME: Installs and updates the real shulportal-pi package in a Debian trixie container (CI's install job):
-# ABOUTME: setup state survives install, repeat and update, and shulportal-update installs a signed 9.0.1 from a stub.
+# ABOUTME: setup state survives install, repeat and update; shulportal-update installs a signed 9.0.1, then puts 9.0.1
+# ABOUTME: back when a 9.0.2 fails to configure.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -14,6 +15,14 @@ openssl pkey -in "$work/key.pem" -pubout -out "$work/pub.pem"
 scripts/build-deb.sh 9.0.0 "$work"
 scripts/build-deb.sh 9.0.1 "$work"
 scripts/sign-deb.sh "$work/shulportal-pi_9.0.1_all.deb" "$work/key.pem"
+# A 9.0.2 whose postinst fails, to prove the real dpkg rollback.
+scripts/build-deb.sh 9.0.2 "$work/broken"
+dpkg-deb -R "$work/broken/shulportal-pi_9.0.2_all.deb" "$work/broken/root"
+# shellcheck disable=SC2016 # the pattern is postinst's own text, not this shell's.
+sed -i 's/^\[ "\$1" = configure \] || exit 0$/&\necho "9.0.2 fails on purpose" >\&2; exit 1/' "$work/broken/root/DEBIAN/postinst"
+grep -q 'fails on purpose' "$work/broken/root/DEBIAN/postinst"
+dpkg-deb --root-owner-group -b "$work/broken/root" "$work/shulportal-pi_9.0.2_all.deb" >/dev/null
+scripts/sign-deb.sh "$work/shulportal-pi_9.0.2_all.deb" "$work/key.pem"
 
 # A Pi that's been set up: comitup's id, and the kiosk's device id.
 mkdir -p /var/lib/comitup /var/lib/shulportal
@@ -43,13 +52,17 @@ id kiosk >/dev/null || { echo "FAIL: no kiosk user"; exit 1; }
 
 # An update from a stub shulportal.com, signed with the throwaway key.
 cp "$work/shulportal-pi_9.0.0_all.deb" /var/lib/shulportal-update/current.deb
+echo 9.0.1 > "$work/target"
 python3 -I tests/install/stub_server.py "$work" 8765 "$work/checks.log" &
 server=$!
 trap 'kill $server 2>/dev/null || true' EXIT
 for _ in $(seq 50); do curl -s -o /dev/null http://127.0.0.1:8765/ && break; sleep 0.1; done
-STUB_LOG=$work SHULPORTAL_API=http://127.0.0.1:8765 SHULPORTAL_RELEASE_KEY="$work/pub.pem" \
-  SHULPORTAL_SYSTEMCTL="$PWD/tests/helpers/bin/systemctl" SHULPORTAL_REFRESH=/bin/true \
-  /usr/local/bin/shulportal-update
+update() {
+  STUB_LOG=$work SHULPORTAL_API=http://127.0.0.1:8765 SHULPORTAL_RELEASE_KEY="$work/pub.pem" \
+    SHULPORTAL_SYSTEMCTL="$PWD/tests/helpers/bin/systemctl" SHULPORTAL_REFRESH=/bin/true \
+    /usr/local/bin/shulportal-update
+}
+update
 
 # shellcheck disable=SC2016 # ${Version} is dpkg-query's format, not the shell's.
 installed=$(dpkg-query -W -f='${Version}' shulportal-pi)
@@ -58,4 +71,15 @@ grep -q '"version":"9.0.0"' "$work/checks.log" || { echo "FAIL: no check from 9.
 grep -qx reboot "$work/systemctl.log" || { echo "FAIL: no reboot"; cat "$work/systemctl.log"; exit 1; }
 cmp -s /var/lib/shulportal-update/current.deb "$work/shulportal-pi_9.0.1_all.deb" || { echo "FAIL: current.deb isn't 9.0.1"; exit 1; }
 [ "$(seeded)" = "$before" ] || { echo "FAIL: the update touched setup state"; exit 1; }
+
+# A release that fails to configure: the real dpkg is left mid-way, and 9.0.1 must go back on, whole.
+echo 9.0.2 > "$work/target"
+update
+# shellcheck disable=SC2016
+state=$(dpkg-query -W -f='${Version} ${Status}' shulportal-pi)
+[ "$state" = "9.0.1 install ok installed" ] || { echo "FAIL: after the failed 9.0.2: $state"; exit 1; }
+grep -q '"failed":{"version":"9.0.2","reason":"Installing the new version failed."}' "$work/checks.log" ||
+  { echo "FAIL: the failure wasn't reported"; tail -n2 "$work/checks.log"; exit 1; }
+[ "$(grep -c reboot "$work/systemctl.log")" = 1 ] || { echo "FAIL: rebooted after a failed install"; exit 1; }
+[ ! -e /run/shulportal/installing ] || { echo "FAIL: left the TV on the updating page"; exit 1; }
 echo "install test: OK"
