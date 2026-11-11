@@ -118,14 +118,18 @@ exec 8>&-
 "$systemctl" restart shulportal-kiosk || true
 
 installing=yes
-if ! "$apt_get" "${apt_opts[@]}" install -y "$deb"; then
-  if put_back; then fail "Installing the new version failed."; fi
+# roll_back REASON: puts the old package back, then fails with REASON (or says the put-back failed too).
+roll_back() {
+  if put_back; then fail "$1"; fi
   fail "Installing failed, and the old version couldn't be put back."
+}
+
+if ! "$apt_get" "${apt_opts[@]}" install -y "$deb"; then
+  roll_back "Installing the new version failed."
 fi
 # The new package's Chromium list may block the installed build and name one to put back.
 if ! chromium_out=$("$chromium_check" 2>&1); then
-  if put_back; then fail "$(printf '%s\n' "$chromium_out" | tail -n1)"; fi
-  fail "Installing failed, and the old version couldn't be put back."
+  roll_back "$(printf '%s\n' "$chromium_out" | tail -n1)"
 fi
 
 mv "$deb" "$update_dir/current.deb"
