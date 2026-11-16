@@ -2,12 +2,12 @@
 # ABOUTME: Before shulportal-pi unpacks: moves comitup's own /etc/comitup.conf and Wi-Fi pages aside, so the
 # ABOUTME: package's config (hotspot name, callback) and ShulPortal's pages can take their place.
 set -e
-pages=/usr/share/comitup/web/templates
 case "$1" in
   install | upgrade)
     dpkg-divert --package shulportal-pi --add --rename --divert /etc/comitup.conf.comitup /etc/comitup.conf
-    dpkg-divert --package shulportal-pi --add --rename --divert $pages/index.html.comitup $pages/index.html
-    dpkg-divert --package shulportal-pi --add --rename --divert $pages/confirm.html.comitup $pages/confirm.html
-    dpkg-divert --package shulportal-pi --add --rename --divert $pages/connect.html.comitup $pages/connect.html
+    for p in index confirm connect; do
+      f=/usr/share/comitup/web/templates/$p.html
+      dpkg-divert --package shulportal-pi --add --rename --divert "$f.comitup" "$f"
+    done
     ;;
 esac

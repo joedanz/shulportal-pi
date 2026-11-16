@@ -1,0 +1,9 @@
+{#- ABOUTME: comitup's Locate button, in ShulPortal's words: blink() (comitup's js/blink.js) flashes the Pi's light. -#}
+{#- ABOUTME: blink.js sets #ledimg's src; a hidden span takes it, so no picture is ever fetched. -#}
+{% if can_blink %}
+<div class="locate">
+  <span id="ledimg" hidden></span>
+  <button type="button" class="button outline" onclick="blink()">Blink the light on this TV's box</button>
+</div>
+<script src="js/blink.js" defer></script>
+{% endif %}

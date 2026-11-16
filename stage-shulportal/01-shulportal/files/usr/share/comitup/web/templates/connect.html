@@ -1,18 +1,9 @@
-<!DOCTYPE html>
-<!-- ABOUTME: ShulPortal's version of comitup's "connecting" page, shown after the password is sent. -->
-<!-- ABOUTME: Like comitup's, it leaves for blank.org after 10 s so a phone's sign-in sheet sees the internet and closes. -->
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<meta http-equiv="refresh" content="10;http://blank.org/">
-<title>Connecting the TV · ShulPortal</title>
-<link rel="stylesheet" href="css/shulportal.css">
-</head>
-<body>
-<main class="page">
-  {% include "shulportal-brand.html" %}
+{#- ABOUTME: ShulPortal's version of comitup's "connecting" page, shown after the password is sent. -#}
+{#- ABOUTME: Like comitup's, it leaves for blank.org after 10 s so a phone's sign-in sheet sees the internet and closes. -#}
+{% extends "shulportal-base.html" %}
+{% block title %}Connecting the TV{% endblock %}
+{% block head %}<meta http-equiv="refresh" content="10;http://blank.org/">{% endblock %}
+{% block content %}
   <div class="card">
     <div class="icon-badge" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -25,6 +16,4 @@
       <li>If the TV shows the setup screen again, the password didn't work. Join the setup network and try again.</li>
     </ol>
   </div>
-</main>
-</body>
-</html>
+{% endblock %}

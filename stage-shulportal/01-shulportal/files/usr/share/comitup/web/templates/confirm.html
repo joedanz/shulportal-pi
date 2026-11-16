@@ -1,18 +1,8 @@
-<!DOCTYPE html>
-<!-- ABOUTME: ShulPortal's version of comitup's password page for the network picked on the Wi-Fi list. -->
-<!-- ABOUTME: Keeps comitup's contract: POST /connect with ssid (URL-encoded) and password (always sent, empty if open). -->
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Connect to {{ ssid }} · ShulPortal</title>
-<link rel="stylesheet" href="css/shulportal.css">
-<script src="js/blink.js"></script>
-</head>
-<body>
-<main class="page">
-  {% include "shulportal-brand.html" %}
+{#- ABOUTME: ShulPortal's version of comitup's password page for the network picked on the Wi-Fi list. -#}
+{#- ABOUTME: Keeps comitup's contract: POST /connect with ssid (URL-encoded) and password (always sent, empty if open). -#}
+{% extends "shulportal-base.html" %}
+{% block title %}Connect to {{ ssid }}{% endblock %}
+{% block content %}
   <div class="card">
     <a class="back" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>Other networks</a>
     <h1>{{ ssid }}</h1>
@@ -39,33 +29,27 @@
     <div class="note">
       {% if mode == 'single' %}
       <p><strong>Your phone will drop off this setup network.</strong> That's expected: the TV switches to {{ ssid }} and shows the sign once it's online.</p>
-      <p style="margin:0">If the password is wrong, the setup network comes back within a few minutes. Join it again and retry.</p>
+      <p>If the password is wrong, the setup network comes back within a few minutes. Join it again and retry.</p>
       {% else %}
-      <p style="margin:0">The TV keeps this setup network up while it joins {{ ssid }}. If it can't connect, this page comes back so you can try again.</p>
+      <p>The TV keeps this setup network up while it joins {{ ssid }}. If it can't connect, this page comes back so you can try again.</p>
       {% endif %}
     </div>
 
-    {% if can_blink %}
-    <div class="locate">
-      <img src="img/ledoff.gif" id="ledimg" alt="">
-      <button type="button" class="button outline" onclick="blink()">Blink the light on this TV's box</button>
-    </div>
-    {% endif %}
+    {% include "shulportal-locate.html" %}
   </div>
-</main>
-<script>
-  (function () {
-    var toggle = document.getElementById("toggle");
-    if (!toggle) return;
-    var input = document.getElementById("password");
-    toggle.addEventListener("click", function () {
-      var show = input.type === "password";
-      input.type = show ? "text" : "password";
-      toggle.textContent = show ? "Hide" : "Show";
-      toggle.setAttribute("aria-pressed", show ? "true" : "false");
-      input.focus();
-    });
-  })();
-</script>
-</body>
-</html>
+  {% if encrypted == 'encrypted' %}
+  <script>
+    (function () {
+      var toggle = document.getElementById("toggle");
+      var input = document.getElementById("password");
+      toggle.addEventListener("click", function () {
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        toggle.textContent = show ? "Hide" : "Show";
+        toggle.setAttribute("aria-pressed", show ? "true" : "false");
+        input.focus();
+      });
+    })();
+  </script>
+  {% endif %}
+{% endblock %}

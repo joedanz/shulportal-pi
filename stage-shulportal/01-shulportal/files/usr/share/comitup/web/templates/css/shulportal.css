@@ -27,7 +27,6 @@
   --button-hover: #1e293b;
   --button-text: #f2f0e9;
   --gold: #d4af37;
-  --error: #c04000;       /* accent-flame */
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -105,8 +104,6 @@ h1 {
 }
 .lead { text-align: center; color: var(--muted); margin: 0 0 20px; }
 p { margin: 0 0 12px; }
-.small { font-size: 14px; color: var(--muted); }
-.center { text-align: center; }
 
 /* Network list */
 .networks { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
@@ -177,7 +174,6 @@ input:focus { border-color: var(--text); }
 .button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .button.outline { background: transparent; color: var(--text); }
 .button.outline:hover { background: color-mix(in srgb, var(--line) 30%, transparent); }
-.button + .button { margin-top: 12px; }
 
 .back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: var(--muted); text-decoration: none; font-weight: 500; }
 .back svg { width: 18px; height: 18px; }
@@ -187,11 +183,10 @@ input:focus { border-color: var(--text); }
   border-radius: 16px; background: color-mix(in srgb, var(--line) 22%, transparent);
   font-size: 15px; color: var(--muted);
 }
+.note p:last-child { margin: 0; }
 .note strong { color: var(--text); font-weight: 600; }
 
 .locate { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; }
-/* comitup's blink.js swaps this picture; the light that matters is on the Pi, so it stays out of sight. */
-.locate img { display: none; }
 .locate .button { width: auto; min-height: 44px; font-size: 15px; padding: 0 18px; }
 
 .steps { margin: 16px 0 0; padding: 0; list-style: none; counter-reset: step; }

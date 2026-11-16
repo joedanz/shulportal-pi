@@ -1,0 +1,6 @@
+# ABOUTME: comitup 1.43's own Wi-Fi pages and web app, which ShulPortal's pages were written against (tests/install/run.sh).
+# ABOUTME: A comitup that changes any of them fails the install job: recheck comitup_pages.py and the pages, then update this.
+5a43a8ea1f179b1361d639229acfdba31855b17277d5593fd7c8463cf512ba10  index.html.comitup
+ed29a6b06c1b27d2fbabf7f9179bb914a06b2a24502daf0ced44fbcd9135ab4b  confirm.html.comitup
+8dcc35e101d3e0707db5afb192982dc7a556d55dba83d2a68f60d7081292a74b  connect.html.comitup
+c10c791172f8a6e448859458622867d45a1cbf0fcd60554b2fed495bba16906a  comitupweb.py

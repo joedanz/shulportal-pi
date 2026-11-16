@@ -5,21 +5,22 @@
 Without a path it uses the installed comitup (CI's install job). COMITUP_TEMPLATES points comitup at
 another template folder, and a stand-in comitup.client is used when the real one isn't installed.
 """
-import glob
 import logging
 import os
 import re
+import subprocess
 import sys
 import types
 from html.parser import HTMLParser
 from urllib.parse import urlencode
 
+from jinja2 import StrictUndefined
+
 
 def load_comitupweb(path):
     if path is None:
-        found = glob.glob("/usr/share/comitup/**/comitupweb.py", recursive=True) + glob.glob(
-            "/usr/lib/python3*/dist-packages/**/comitupweb.py", recursive=True
-        )
+        listed = subprocess.run(["dpkg", "-L", "comitup"], capture_output=True, text=True).stdout.split()
+        found = [f for f in listed if f.endswith("/comitupweb.py")]
         if not found:
             sys.exit("FAIL: comitupweb.py not found")
         path = found[0]
@@ -28,8 +29,6 @@ def load_comitupweb(path):
     except ImportError:
         pkg = types.ModuleType("comitup")
         client = types.ModuleType("comitup.client")
-        client.can_blink = lambda: True
-        client.blink = lambda: None
         pkg.client = client
         sys.modules["comitup"], sys.modules["comitup.client"] = pkg, client
     sys.path.insert(0, os.path.dirname(path))
@@ -41,13 +40,14 @@ def load_comitupweb(path):
 class FakeComitup:
     def __init__(self, points):
         self.points = points
+        self.mode = "single"
         self.connects = []
 
     def ciu_points(self):
         return [dict(p) for p in self.points]
 
     def ciu_info(self):
-        return {"imode": "single"}
+        return {"imode": self.mode}
 
     def ciu_connect(self, ssid, password):
         self.connects.append((ssid, password))
@@ -103,6 +103,8 @@ def main():
     web.ciu_client = fake
     app = web.create_app(logging.getLogger("test"))
     app.testing = True
+    # A variable comitup stops passing fails here, instead of rendering as nothing on a Pi.
+    app.jinja_env.undefined = StrictUndefined
     http = app.test_client()
 
     def get(url):
@@ -114,6 +116,7 @@ def main():
     check(status == 200, "list page renders")
     check("ShulPortal" in html and "css/shulportal.css" in html, "list page is ShulPortal's")
     check("ComitUp" not in html and "uikit" not in html, "list page has none of comitup's look")
+    check('href="data:,"' in html, "no favicon request, which comitup would answer with its list page again")
     check("Guest &lt;b&gt;&amp;&lt;/b&gt;" in html, "network names are escaped")
     check('id="ledimg"' in html and "blink()" in html, "list page keeps Locate")
     page = Page(html)
@@ -126,17 +129,19 @@ def main():
     css = http.get("/css/shulportal.css").get_data(as_text=True)
     for font in re.findall(r'url\("([^"]+)"\)', css):
         check(http.get("/css/" + font).status_code == 200, f"serves font css/{font}")
-    check(http.get("/img/ledon.gif").status_code == 200, "serves the Locate light")
 
     # A secured network: the password page posts ssid + password, and comitup connects with them.
     status, html = get("/" + nets[0])
-    check(status == 200, "password page renders for a secured network")
+    check(status == 200 and "css/shulportal.css" in html, "password page renders as ShulPortal's for a secured network")
+    check("drop off this setup network" in html, "single-radio Pi warns the phone will drop off")
     form = Page(html).forms[0]
     check((form["action"], form["method"]) == ("/connect", "post"), "password form posts to /connect")
     check('type="password"' in html, "secured network asks for a password")
     fields = dict(form["fields"], password="hunter2 shalom")
     r = http.post(form["action"], data=fields)
-    check(r.status_code == 200 and "Connecting the TV" in r.get_data(as_text=True), "connecting page renders")
+    connecting = r.get_data(as_text=True)
+    check(r.status_code == 200 and "Connecting the TV" in connecting and "css/shulportal.css" in connecting,
+          "connecting page renders as ShulPortal's")
     check(fake.connects[-1:] == [("Keter Torah", b"hunter2 shalom")], "comitup connects with the name and password")
 
     # An open network: no password box, but the field comitup reads is still sent.
@@ -148,8 +153,12 @@ def main():
     check(r.status_code == 200, "open network connects without a 500")
     check(fake.connects[-1:] == [("Guest <b>&</b>", b"")], "comitup gets the open network's real name")
 
+    # A Pi whose hotspot stays up while it joins (comitup's other mode).
+    fake.mode = "router"
+    check("keeps this setup network up" in get("/" + nets[0])[1], "two-radio Pi says the setup network stays up")
+
     # A network typed by hand.
-    form = Page(get("/")[1]).forms[0]
+    form = page.forms[0]
     check(form["action"] == "/confirm", "hidden network form goes to the password page")
     status, html = get("/confirm?" + urlencode(dict(form["fields"], ssid="Back Office")))
     check(status == 200 and "Back Office" in html, "hidden network gets a password page")

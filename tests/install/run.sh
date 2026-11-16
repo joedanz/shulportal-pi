@@ -54,9 +54,13 @@ id kiosk >/dev/null || { echo "FAIL: no kiosk user"; exit 1; }
 pages=/usr/share/comitup/web/templates
 for p in index confirm connect; do
   [ "$(dpkg-divert --listpackage "$pages/$p.html")" = shulportal-pi ] || { echo "FAIL: $p.html not diverted"; exit 1; }
-  grep -q 'shulportal-brand.html' "$pages/$p.html" || { echo "FAIL: $p.html isn't ours"; exit 1; }
   [ -f "$pages/$p.html.comitup" ] || { echo "FAIL: comitup's own $p.html is gone"; exit 1; }
 done
+# Our pages fit comitup 1.43; a newer comitup has to be checked against them before it ships.
+pinned=$(mktemp -d)
+cp "$pages"/*.html.comitup "$(dpkg -L comitup | grep '/comitupweb\.py$')" "$pinned/"
+grep -v '^#' tests/install/comitup-web.sha256 | (cd "$pinned" && sha256sum --check --quiet) ||
+  { echo "FAIL: comitup's web pages changed (dpkg -s comitup: $(dpkg-query -W -f='${Version}' comitup)); see tests/install/comitup-web.sha256"; exit 1; }
 python3 -I tests/install/comitup_pages.py
 
 # An update from a stub shulportal.com, signed with the throwaway key.

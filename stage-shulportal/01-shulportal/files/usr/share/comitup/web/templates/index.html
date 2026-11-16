@@ -1,18 +1,8 @@
-<!DOCTYPE html>
-<!-- ABOUTME: ShulPortal's version of comitup's Wi-Fi list, shown on a phone joined to the TV's setup hotspot. -->
-<!-- ABOUTME: Keeps comitup's contract: each network links to /confirm?ssid=…&encrypted=…; Locate calls blink(). -->
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<title>Set up this TV · ShulPortal</title>
-<link rel="stylesheet" href="css/shulportal.css">
-<script src="js/blink.js"></script>
-</head>
-<body>
-<main class="page">
-  {% include "shulportal-brand.html" %}
+{#- ABOUTME: ShulPortal's version of comitup's Wi-Fi list, shown on a phone joined to the TV's setup hotspot. -#}
+{#- ABOUTME: Keeps comitup's contract: each network links to /confirm?ssid=…&encrypted=…; Locate calls blink(). -#}
+{% extends "shulportal-base.html" %}
+{% block title %}Set up this TV{% endblock %}
+{% block content %}
   <div class="card">
     <div class="icon-badge" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
@@ -51,14 +41,7 @@
       <button type="submit" class="button outline">Next</button>
     </form>
 
-    {% if can_blink %}
-    <div class="locate">
-      <img src="img/ledoff.gif" id="ledimg" alt="">
-      <button type="button" class="button outline" onclick="blink()">Blink the light on this TV's box</button>
-    </div>
-    {% endif %}
+    {% include "shulportal-locate.html" %}
   </div>
   <footer>Setting up a ShulPortal TV</footer>
-</main>
-</body>
-</html>
+{% endblock %}
