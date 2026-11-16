@@ -23,6 +23,27 @@
       {% else %}
       <input type="hidden" name="password" value="">
       {% endif %}
+
+      {#- Shown once the turn helper answers; comitup ignores the extra field on Connect. #}
+      <fieldset class="mount" id="turn-pick" hidden>
+        <legend>How is this TV hung?</legend>
+        <div class="mount-options">
+          <label class="mount-option"><input type="radio" name="turn" value="none" checked>
+            <span class="mount-tile">
+              <svg viewBox="0 0 56 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="4" y="8" width="48" height="29" rx="3"/><line x1="22" y1="43" x2="34" y2="43"/><line x1="28" y1="37" x2="28" y2="43"/></svg>
+              Horizontal</span></label>
+          <label class="mount-option"><input type="radio" name="turn" value="right">
+            <span class="mount-tile">
+              <svg viewBox="0 0 56 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="16" y="2" width="22" height="44" rx="3"/><path d="M45 14 a12 12 0 0 1 0 20"/><polyline points="41 31 45 34 48 30"/></svg>
+              Vertical, turned right</span></label>
+          <label class="mount-option"><input type="radio" name="turn" value="left">
+            <span class="mount-tile">
+              <svg viewBox="0 0 56 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="18" y="2" width="22" height="44" rx="3"/><path d="M11 14 a12 12 0 0 0 0 20"/><polyline points="15 31 11 34 8 30"/></svg>
+              Vertical, turned left</span></label>
+        </div>
+        <p class="mount-hint">Watch the TV after you pick: its screen turns to read upright. If it's upside down, pick the other side.</p>
+      </fieldset>
+
       <button type="submit" class="button">Connect the TV</button>
     </form>
 
@@ -37,6 +58,27 @@
 
     {% include "shulportal-locate.html" %}
   </div>
+  <script>
+    // How the TV hangs, kept by the turn helper on the Pi (libexec/shulportal/turn-helper). The TV turns as
+    // soon as a choice is tapped, so a wrong side can be fixed before Connect takes the phone off this network.
+    (function () {
+      var url = "http://" + location.hostname + ":8411/turn";
+      var pick = document.getElementById("turn-pick");
+      var touched = false;
+      fetch(url, { cache: "no-store" })
+        .then(function (r) { return r.ok ? r.text() : Promise.reject(); })
+        .then(function (turn) {
+          var input = pick.querySelector('input[value="' + turn.trim() + '"]');
+          if (input && !touched) input.checked = true;
+          pick.hidden = false;
+        })
+        .catch(function () {});
+      pick.addEventListener("change", function (e) {
+        touched = true;
+        fetch(url, { method: "POST", body: new URLSearchParams({ turn: e.target.value }) }).catch(function () {});
+      });
+    })();
+  </script>
   {% if encrypted == 'encrypted' %}
   <script>
     (function () {

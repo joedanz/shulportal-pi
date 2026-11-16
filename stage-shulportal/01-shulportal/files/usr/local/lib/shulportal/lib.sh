@@ -159,27 +159,29 @@ install_target() {
   return 0
 }
 
-# reply_turn REPLY: how ShulPortal says this TV hangs (right or left), or nothing.
-reply_turn() { reply_field "$1" turn 'right|left'; }
+# reply_turn REPLY: how ShulPortal says this TV's sign hangs (right, left or none), or nothing when no sign has
+# linked this Pi yet.
+reply_turn() { reply_field "$1" turn 'right|left|none'; }
 
-# saved_turn FILE: the turn save_turn kept (right or left), or nothing.
+# saved_turn FILE: the turn the kiosk uses (right or left), or nothing. A linked Pi's sign sets it (save_turn);
+# before that, the setup page on the phone does (libexec/shulportal/turn-helper).
 saved_turn() {
   local t
   t=$(cat "$1" 2>/dev/null || true)
   case $t in right | left) printf '%s\n' "$t" ;; esac
 }
 
-# save_turn FILE REPLY: keeps the turn a check reply gives, or forgets it when the reply has none. Writes only
-# when it changes, so a check every 5 minutes leaves the SD card alone.
+# save_turn FILE REPLY: keeps the turn a check reply gives, or forgets it on "none". A reply with no turn leaves
+# it alone, so a Pi no sign has linked keeps the turn picked on the phone. Writes only when it changes, so a
+# check every 5 minutes leaves the SD card alone.
 save_turn() {
   local turn
   turn=$(reply_turn "$2")
-  [ "$turn" != "$(saved_turn "$1")" ] || return 0
-  if [ -n "$turn" ]; then
-    printf '%s\n' "$turn" > "$1.tmp" && mv "$1.tmp" "$1"
-  else
-    rm -f "$1"
-  fi
+  case $turn in
+    '') ;;
+    none) rm -f "$1" ;;
+    *) [ "$turn" = "$(saved_turn "$1")" ] || { printf '%s\n' "$turn" > "$1.tmp" && mv "$1.tmp" "$1"; } ;;
+  esac
 }
 
 # check_body DEVICE VERSION [FAILED_VERSION REASON]: the JSON body of a check (see ShulPortal's piHttp.ts).

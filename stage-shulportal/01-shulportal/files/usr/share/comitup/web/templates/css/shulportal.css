@@ -175,6 +175,27 @@ input:focus { border-color: var(--text); }
 .button.outline { background: transparent; color: var(--text); }
 .button.outline:hover { background: color-mix(in srgb, var(--line) 30%, transparent); }
 
+/* How the TV hangs (confirm page): three equal tiles. */
+.mount { border: 0; margin: 4px 0 20px; padding: 0; min-width: 0; }
+.mount[hidden] { display: none; }
+.mount legend { font-weight: 600; font-size: 15px; margin: 0 0 8px; padding: 0; }
+.mount-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mount-option { position: relative; display: flex; }
+.mount-option input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.mount-tile {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 14px 6px 12px;
+  border: 2px solid var(--line); border-radius: 16px;
+  font-size: 14px; font-weight: 500; line-height: 1.25; text-align: center;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.mount-tile svg { width: 56px; height: 48px; color: var(--muted); }
+.mount-option input:checked + .mount-tile { border-color: var(--text); background: color-mix(in srgb, var(--gold) 10%, transparent); }
+.mount-option input:checked + .mount-tile svg { color: var(--text); }
+.mount-option input:focus-visible + .mount-tile { outline: 2px solid var(--text); outline-offset: 2px; }
+.mount-hint { font-size: 14px; color: var(--muted); margin: 10px 0 0; }
+
 .back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: var(--muted); text-decoration: none; font-weight: 500; }
 .back svg { width: 18px; height: 18px; }
 

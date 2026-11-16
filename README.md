@@ -32,8 +32,10 @@ To link a screen to a different sign, open ShulPortal on a phone, rotate that si
   (new router, changed password) and stays off while Ethernet works. A showing sign keeps its last content for 5 minutes
   without internet before the TV switches to the setup page.
   On a TV hung sideways, the TV's own pages (connecting, Wi-Fi setup, updating, the link code) turn like its sign:
-  each check with ShulPortal says how the sign hangs, and the Pi keeps that for when it's offline. A Pi that has
-  never been linked shows them horizontal.
+  each check with ShulPortal says how the sign hangs, and the Pi keeps that for when it's offline. Before a sign
+  links it, the Wi-Fi password page on the phone asks how the TV is hung, and the TV turns as soon as a choice is
+  tapped (the turn helper, `usr/local/libexec/shulportal/turn-helper`, on port 8411: changes only over the hotspot,
+  reads on loopback for the TV's pages). Once linked, the sign's setting replaces it.
   The Wi-Fi pages a phone sees on that hotspot are ShulPortal's own (`usr/share/comitup/web/templates`, diverted
   over comitup's), with the app's colors and fonts served from the Pi, since the phone has no internet there.
 - Without internet, a Pi that has shown its sign before still opens it at startup: the browser keeps the TV page and a

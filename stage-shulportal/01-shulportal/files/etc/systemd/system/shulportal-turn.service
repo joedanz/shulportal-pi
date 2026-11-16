@@ -1,0 +1,25 @@
+# ABOUTME: The turn helper: keeps how the TV hangs as picked on the phone during Wi-Fi setup (port 8411).
+# ABOUTME: Runs as the kiosk user, who owns /var/lib/shulportal, and may write nothing else.
+[Unit]
+Description=ShulPortal turn picked during Wi-Fi setup
+After=network.target
+
+[Service]
+User=kiosk
+ExecStart=/usr/local/libexec/shulportal/turn-helper
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/shulportal
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+MemoryMax=64M
+
+[Install]
+WantedBy=multi-user.target

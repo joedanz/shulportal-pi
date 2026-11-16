@@ -137,6 +137,10 @@ def main():
     form = Page(html).forms[0]
     check((form["action"], form["method"]) == ("/connect", "post"), "password form posts to /connect")
     check('type="password"' in html, "secured network asks for a password")
+    check('id="turn-pick" hidden' in html and all(f'value="{t}"' in html for t in ("none", "right", "left")),
+          "password page asks how the TV hangs, hidden until the turn helper answers")
+    check(":8411/turn" in html, "the pick goes to the turn helper")
+    check("turn" in form["fields"], "the Connect post carries the pick too, which comitup must ignore")
     fields = dict(form["fields"], password="hunter2 shalom")
     r = http.post(form["action"], data=fields)
     connecting = r.get_data(as_text=True)
