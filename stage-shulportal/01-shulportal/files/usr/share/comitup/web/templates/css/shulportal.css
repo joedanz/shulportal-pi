@@ -101,7 +101,10 @@ h1 {
   text-align: center;
   margin: 0 0 8px;
   overflow-wrap: anywhere;
+  text-wrap: balance;
 }
+/* "Wi-Fi" breaks at its hyphen otherwise. */
+.nowrap { white-space: nowrap; }
 .lead { text-align: center; color: var(--muted); margin: 0 0 20px; }
 p { margin: 0 0 12px; }
 
