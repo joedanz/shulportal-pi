@@ -1,0 +1,47 @@
+{#- ABOUTME: ShulPortal's version of comitup's Wi-Fi list, shown on a phone joined to the TV's setup hotspot. -#}
+{#- ABOUTME: Keeps comitup's contract: each network links to /confirm?ssid=…&encrypted=…; Locate calls blink(). -#}
+{% extends "shulportal-base.html" %}
+{% block title %}Set up this TV{% endblock %}
+{% block content %}
+  <div class="card">
+    <div class="icon-badge" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+    </div>
+    <h1>Pick the shul's Wi-Fi</h1>
+    <p class="lead">Choose the network this TV should use.</p>
+
+    {% if points %}
+    <ul class="networks">
+      {% for point in points %}
+      <li>
+        <a class="network" href="confirm?ssid={{ point.ssid_encoded }}&amp;encrypted={{ point.security }}">
+          <span class="network-name">{{ point.ssid }}</span>
+          {% if point.security == 'encrypted' %}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Needs a password"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          {% endif %}
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty">
+      <p>The TV hasn't found any Wi-Fi networks yet.</p>
+      <a class="button outline" href="/">Look again</a>
+    </div>
+    {% endif %}
+
+    <div class="divider">Network not listed?</div>
+    <form action="/confirm">
+      <input type="hidden" name="encrypted" value="encrypted">
+      <div class="field">
+        <label for="ssid">Network name</label>
+        <input id="ssid" type="text" name="ssid" required placeholder="Exactly as it's spelled" autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="next">
+      </div>
+      <button type="submit" class="button outline">Next</button>
+    </form>
+
+    {% include "shulportal-locate.html" %}
+  </div>
+  <footer>Setting up a ShulPortal TV</footer>
+{% endblock %}

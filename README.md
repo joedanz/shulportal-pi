@@ -31,6 +31,8 @@ To link a screen to a different sign, open ShulPortal on a phone, rotate that si
 - [comitup](https://github.com/davesteele/comitup) for the setup hotspot. It comes up whenever saved Wi-Fi can't connect
   (new router, changed password) and stays off while Ethernet works. A showing sign keeps its last content for 5 minutes
   without internet before the TV switches to the setup page.
+  The Wi-Fi pages a phone sees on that hotspot are ShulPortal's own (`usr/share/comitup/web/templates`, diverted
+  over comitup's), with the app's colors and fonts served from the Pi, since the phone has no internet there.
 - Without internet, a Pi that has shown its sign before still opens it at startup: the browser keeps the TV page and a
   week of its schedule, so a reboot or power cut during an outage brings back the right day's times. When the internet
   returns, the TV reloads live.

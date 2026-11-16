@@ -45,10 +45,35 @@ build() {
   [ "$status" -eq 1 ]
 }
 
-@test "preinst diverts comitup's config" {
-  grep -q 'dpkg-divert --package shulportal-pi --add --rename --divert /etc/comitup.conf.comitup /etc/comitup.conf' "$ROOT/debian/preinst"
+# divert_calls SCRIPT ARG: runs a debian/ maintainer script with a dpkg-divert that only logs, and prints
+# each path it was asked to divert ("DIVERTED.comitup DIVERTED" calls give DIVERTED).
+divert_calls() {
+  mkdir -p "$BATS_TEST_TMPDIR/bin"
+  printf '#!/bin/sh\necho "$@" >> "%s/divert.log"\n' "$BATS_TEST_TMPDIR" > "$BATS_TEST_TMPDIR/bin/dpkg-divert"
+  chmod +x "$BATS_TEST_TMPDIR/bin/dpkg-divert"
+  rm -f "$BATS_TEST_TMPDIR/divert.log"
+  PATH="$BATS_TEST_TMPDIR/bin:$PATH" sh "$ROOT/debian/$1" "$2"
+  awk '{print $NF}' "$BATS_TEST_TMPDIR/divert.log"
 }
 
-@test "postrm gives comitup its config back when the package goes" {
-  grep -q 'dpkg-divert --package shulportal-pi --remove --rename --divert /etc/comitup.conf.comitup /etc/comitup.conf' "$ROOT/debian/postrm"
+# The comitup pages the package replaces: every shipped .html in comitup's folder but our own shulportal-* parts.
+shipped_pages() {
+  (cd "$FILES" && find usr/share/comitup/web/templates -maxdepth 1 -name '*.html' ! -name 'shulportal-*' | sed 's|^|/|' | sort)
+}
+
+@test "preinst diverts comitup's config and exactly the Wi-Fi pages the package ships" {
+  diverted=$(divert_calls preinst install)
+  grep -qx /etc/comitup.conf <<<"$diverted"
+  [ "$(grep -v '^/etc/' <<<"$diverted" | sort)" = "$(shipped_pages)" ] || {
+    echo "diverted: $diverted"; echo "shipped: $(shipped_pages)"; false
+  }
+  [ "$(shipped_pages | wc -l)" -eq 3 ]
+  grep -q -- '--add --rename --divert /usr/share/comitup/web/templates/index.html.comitup ' "$BATS_TEST_TMPDIR/divert.log"
+}
+
+@test "postrm gives comitup back everything preinst took" {
+  taken=$(divert_calls preinst install)
+  [ "$(divert_calls postrm remove)" = "$taken" ]
+  [ "$(grep -c -- '--remove --rename' "$BATS_TEST_TMPDIR/divert.log")" -eq 4 ]
+  [ -z "$(divert_calls postrm upgrade)" ]
 }

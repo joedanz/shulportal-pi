@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ABOUTME: Installs and updates the real shulportal-pi package in a Debian trixie container (CI's install job):
-# ABOUTME: setup state survives install, repeat and update; shulportal-update installs a signed 9.0.1, then puts 9.0.1
+# ABOUTME: setup state survives install, repeat and update; the Wi-Fi pages are ours; shulportal-update installs a signed 9.0.1, then puts 9.0.1
 # ABOUTME: back when a 9.0.2 fails to configure.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -49,6 +49,19 @@ if dpkg -L comitup | grep -qx /etc/comitup.conf; then
   }
 fi
 id kiosk >/dev/null || { echo "FAIL: no kiosk user"; exit 1; }
+
+# The phone's Wi-Fi pages are ShulPortal's, comitup's are kept aside, and comitup's own web app serves ours.
+pages=/usr/share/comitup/web/templates
+for p in index confirm connect; do
+  [ "$(dpkg-divert --listpackage "$pages/$p.html")" = shulportal-pi ] || { echo "FAIL: $p.html not diverted"; exit 1; }
+  [ -f "$pages/$p.html.comitup" ] || { echo "FAIL: comitup's own $p.html is gone"; exit 1; }
+done
+# Our pages fit comitup 1.43; a newer comitup has to be checked against them before it ships.
+pinned=$(mktemp -d)
+cp "$pages"/*.html.comitup "$(dpkg -L comitup | grep '/comitupweb\.py$')" "$pinned/"
+grep -v '^#' tests/install/comitup-web.sha256 | (cd "$pinned" && sha256sum --check --quiet) ||
+  { echo "FAIL: comitup's web pages changed (dpkg -s comitup: $(dpkg-query -W -f='${Version}' comitup)); see tests/install/comitup-web.sha256"; exit 1; }
+python3 -I tests/install/comitup_pages.py
 
 # An update from a stub shulportal.com, signed with the throwaway key.
 cp "$work/shulportal-pi_9.0.0_all.deb" /var/lib/shulportal-update/current.deb

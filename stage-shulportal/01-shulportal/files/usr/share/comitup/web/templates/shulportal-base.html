@@ -1,0 +1,21 @@
+{#- ABOUTME: The layout of ShulPortal's Wi-Fi setup pages on the phone: head, wordmark and page column. -#}
+{#- ABOUTME: Not a comitup file: index, confirm and connect extend it, filling the title, head and content blocks. -#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>{% block title %}{% endblock %} · ShulPortal</title>
+{#- No favicon request: comitup would redirect it to its list page and render that again. #}
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/shulportal.css">
+{% block head %}{% endblock %}
+</head>
+<body>
+<main class="page">
+  <div class="brand" aria-label="ShulPortal"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name" aria-hidden="true">ShulPortal</span></div>
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

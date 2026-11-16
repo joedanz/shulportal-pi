@@ -1,0 +1,55 @@
+{#- ABOUTME: ShulPortal's version of comitup's password page for the network picked on the Wi-Fi list. -#}
+{#- ABOUTME: Keeps comitup's contract: POST /connect with ssid (URL-encoded) and password (always sent, empty if open). -#}
+{% extends "shulportal-base.html" %}
+{% block title %}Connect to {{ ssid }}{% endblock %}
+{% block content %}
+  <div class="card">
+    <a class="back" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>Other networks</a>
+    <h1>{{ ssid }}</h1>
+    {% if encrypted == 'encrypted' %}
+    <p class="lead">Enter this network's password.</p>
+    {% else %}
+    <p class="lead">This network is open: no password needed.</p>
+    {% endif %}
+
+    <form action="/connect" method="POST">
+      <input type="hidden" name="ssid" value="{{ ssid_encoded }}">
+      {% if encrypted == 'encrypted' %}
+      <div class="field has-toggle">
+        <label for="password">Wi-Fi password</label>
+        <input id="password" type="password" name="password" autofocus autocapitalize="none" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="go">
+        <button type="button" class="toggle" id="toggle" aria-controls="password" aria-pressed="false">Show</button>
+      </div>
+      {% else %}
+      <input type="hidden" name="password" value="">
+      {% endif %}
+      <button type="submit" class="button">Connect the TV</button>
+    </form>
+
+    <div class="note">
+      {% if mode == 'single' %}
+      <p><strong>Your phone will drop off this setup network.</strong> That's expected: the TV switches to {{ ssid }} and shows the sign once it's online.</p>
+      <p>If the password is wrong, the setup network comes back within a few minutes. Join it again and retry.</p>
+      {% else %}
+      <p>The TV keeps this setup network up while it joins {{ ssid }}. If it can't connect, this page comes back so you can try again.</p>
+      {% endif %}
+    </div>
+
+    {% include "shulportal-locate.html" %}
+  </div>
+  {% if encrypted == 'encrypted' %}
+  <script>
+    (function () {
+      var toggle = document.getElementById("toggle");
+      var input = document.getElementById("password");
+      toggle.addEventListener("click", function () {
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        toggle.textContent = show ? "Hide" : "Show";
+        toggle.setAttribute("aria-pressed", show ? "true" : "false");
+        input.focus();
+      });
+    })();
+  </script>
+  {% endif %}
+{% endblock %}
