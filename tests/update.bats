@@ -52,6 +52,12 @@ release() {
   done
 }
 
+@test "install_target reads the install beside other fields, in any order" {
+  [ "$(install_target '{"install":"1.1.1","turn":"right"}' 1.1.0)" = 1.1.1 ]
+  [ "$(install_target '{"turn":"left", "install" : "1.1.1"}' 1.1.0)" = 1.1.1 ]
+  [ -z "$(install_target 'oops {"install":"1.1.1"}' 1.1.0)" ]
+}
+
 @test "install_target never installs on a Pi whose own version isn't x.y.z" {
   [ -z "$(install_target '{"install":"1.1.1"}' 0.0.0+dev.abc1234)" ]
 }
@@ -60,6 +66,16 @@ release() {
   [ "$(check_body "$ID" 1.1.0)" = "{\"device\":\"$ID\",\"version\":\"1.1.0\"}" ]
   [ "$(check_body "$ID" 1.1.0 1.1.1 'The download didn"t "finish\.')" = \
     "{\"device\":\"$ID\",\"version\":\"1.1.0\",\"failed\":{\"version\":\"1.1.1\",\"reason\":\"The download didnt finish.\"}}" ]
+}
+
+@test "reply_turn reads a turn right or left from a JSON reply, beside other fields" {
+  [ "$(reply_turn '{"turn":"right"}')" = right ]
+  [ "$(reply_turn ' { "turn" : "left" } ')" = left ]
+  [ "$(reply_turn '{"install":"1.2.3","turn":"left"}')" = left ]
+  [ -z "$(reply_turn '{}')" ]
+  [ -z "$(reply_turn '{"turn":"upside-down"}')" ]
+  [ -z "$(reply_turn '{"install":"1.2.3"}')" ]
+  [ -z "$(reply_turn '<html>{"turn":"right"}</html>')" ]
 }
 
 # --- the updater -------------------------------------------------------------------------------------
@@ -256,4 +272,42 @@ SH
   [ "$status" -eq 0 ]
   # It waited for the refresh holding the lock before it wrote the updating page.
   [ "$took" -ge 2 ]
+}
+
+# --- how the sign hangs ------------------------------------------------------------------------------
+
+@test "a check that says turn right saves it for the kiosk" {
+  export STUB_REPLY='{"turn":"right"}'
+  update
+  [ "$status" -eq 0 ]
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = right ]
+}
+
+@test "a check with no turn forgets the old one" {
+  echo right > "$SHULPORTAL_STATE/turn"
+  export STUB_REPLY='{}'
+  update
+  [ ! -e "$SHULPORTAL_STATE/turn" ]
+}
+
+@test "the same turn isn't written again, so a check every 5 minutes leaves the SD card alone" {
+  echo left > "$SHULPORTAL_STATE/turn"
+  touch -t 202001010000 "$SHULPORTAL_STATE/turn"
+  export STUB_REPLY='{"turn":"left"}'
+  update
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = left ]
+  [ -z "$(find "$SHULPORTAL_STATE/turn" -newermt 2021-01-01)" ]
+}
+
+@test "a turn that comes with an install is saved too" {
+  export STUB_REPLY='{"install":"0.0.1","turn":"left"}'
+  update
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = left ]
+}
+
+@test "offline, the saved turn stays" {
+  echo right > "$SHULPORTAL_STATE/turn"
+  export STUB_CURL_OFFLINE=yes
+  update
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = right ]
 }

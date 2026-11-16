@@ -62,6 +62,9 @@ fi
 reply=$(check "$body") || exit 0
 rm -f "$update_dir/failed"
 
+# How the sign hangs, for the pages the kiosk shows itself.
+save_turn "$state/turn" "$reply"
+
 target=$(install_target "$reply" "$version")
 [ -n "$target" ] || exit 0
 

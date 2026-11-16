@@ -28,6 +28,12 @@ case "$(cat "$run/page" 2>/dev/null || true)" in
   *) url="file://$share/connecting.html" ;;
 esac
 
+# How the TV hangs, from its sign (shulportal-update saves it): every page turns to match.
+turn=$(saved_turn "$state/turn")
+if [ -n "$turn" ]; then
+  case $url in *\?*) url="$url&turn=$turn" ;; *) url="$url?turn=$turn" ;; esac
+fi
+
 exec "${SHULPORTAL_CHROMIUM:-chromium}" \
   --kiosk --noerrdialogs --disable-infobars --no-first-run \
   --hide-crash-restore-bubble --disable-session-crashed-bubble \

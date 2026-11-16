@@ -95,6 +95,29 @@ setup() {
   [[ $(logged chromium) == *"--kiosk"* ]] || false
 }
 
+@test "kiosk turns every page on a TV hung sideways, as its sign says" {
+  echo right > "$SHULPORTAL_STATE/turn"
+  for page in online setup updating connecting; do
+    echo "$page" > "$SHULPORTAL_RUN/page"
+    rm -f "$STUB_LOG/chromium.log"
+    "$SHULPORTAL_BIN/shulportal-kiosk"
+    case $page in
+      online) [[ $(logged chromium) =~ https://shulportal.com/tv\?device=[0-9a-f]{32}\&turn=right ]] || { logged chromium; false; } ;;
+      setup) [[ $(logged chromium) == *"setup.html?turn=right"* ]] || { logged chromium; false; } ;;
+      updating) [[ $(logged chromium) == *"updating.html?turn=right"* ]] || { logged chromium; false; } ;;
+      connecting) [[ $(logged chromium) == *"connecting.html?turn=right"* ]] || { logged chromium; false; } ;;
+    esac
+  done
+}
+
+@test "kiosk ignores a turn file it doesn't understand" {
+  echo sideways > "$SHULPORTAL_STATE/turn"
+  echo setup > "$SHULPORTAL_RUN/page"
+  "$SHULPORTAL_BIN/shulportal-kiosk"
+  [[ $(logged chromium) == *"/setup.html" ]] || { logged chromium; false; }
+  [[ $(logged chromium) != *"turn="* ]] || false
+}
+
 @test "kiosk marks the profile clean before launching" {
   mkdir -p "$SHULPORTAL_PROFILE/Default"
   cp "$BATS_TEST_DIRNAME/fixtures/crashed-preferences.json" "$SHULPORTAL_PROFILE/Default/Preferences"
@@ -187,4 +210,16 @@ setup() {
   run "$SHULPORTAL_BIN/shulportal-kiosk"
   [ "$status" -eq 0 ]
   [[ $(logged chromium) == *"https://shulportal.com/tv" ]] || false
+}
+
+@test "every local file the TV pages load is one the package ships" {
+  share=$FILES/usr/local/share/shulportal
+  refs=$(grep -ho 'file:///[^")]*' "$share"/*.html "$share"/*.tmpl "$share"/tv.css | sort -u)
+  [ "$(wc -l <<<"$refs")" -ge 3 ]
+  while IFS= read -r ref; do
+    [ -f "$FILES${ref#file://}" ] || { echo "missing: $ref"; false; }
+  done <<<"$refs"
+  for page in connecting.html updating.html setup.html.tmpl; do
+    grep -q 'file:///usr/local/share/shulportal/tv.css' "$share/$page" || { echo "$page doesn't load tv.css"; false; }
+  done
 }

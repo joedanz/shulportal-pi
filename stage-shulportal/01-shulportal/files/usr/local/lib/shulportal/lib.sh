@@ -143,14 +143,43 @@ version_gt() {
   return 1
 }
 
-# install_target REPLY CURRENT: the version ShulPortal's check reply asks this Pi to install, printed only
-# when the reply is exactly {"install":"x.y.z"}, CURRENT is a release version, and the target is newer.
-# Anything else (an HTML page, a dev build, an older version, junk) prints nothing.
+# reply_field REPLY KEY VALUE_ERE: the string KEY holds in ShulPortal's one-line JSON check reply, printed only when
+# it matches VALUE_ERE whole; other fields, in any order, are fine. A reply that isn't a JSON object (an HTML
+# error page, junk) prints nothing.
+reply_field() {
+  printf '%s\n' "$1" | sed -En '/^[[:space:]]*\{.*\}[[:space:]]*$/ s/.*"'"$2"'"[[:space:]]*:[[:space:]]*"('"$3"')".*/\1/p' | head -n1
+}
+
+# install_target REPLY CURRENT: the version ShulPortal's check reply asks this Pi to install, printed only when
+# it's x.y.z, CURRENT is a release version, and the target is newer. Anything else prints nothing.
 install_target() {
   local v
-  v=$(printf '%s\n' "$1" | sed -n 's/^[[:space:]]*{[[:space:]]*"install"[[:space:]]*:[[:space:]]*"\([0-9.]*\)"[[:space:]]*}[[:space:]]*$/\1/p' | head -n1)
+  v=$(reply_field "$1" install '[0-9.]+')
   if is_version "$v" && is_version "$2" && version_gt "$v" "$2"; then printf '%s\n' "$v"; fi
   return 0
+}
+
+# reply_turn REPLY: how ShulPortal says this TV hangs (right or left), or nothing.
+reply_turn() { reply_field "$1" turn 'right|left'; }
+
+# saved_turn FILE: the turn save_turn kept (right or left), or nothing.
+saved_turn() {
+  local t
+  t=$(cat "$1" 2>/dev/null || true)
+  case $t in right | left) printf '%s\n' "$t" ;; esac
+}
+
+# save_turn FILE REPLY: keeps the turn a check reply gives, or forgets it when the reply has none. Writes only
+# when it changes, so a check every 5 minutes leaves the SD card alone.
+save_turn() {
+  local turn
+  turn=$(reply_turn "$2")
+  [ "$turn" != "$(saved_turn "$1")" ] || return 0
+  if [ -n "$turn" ]; then
+    printf '%s\n' "$turn" > "$1.tmp" && mv "$1.tmp" "$1"
+  else
+    rm -f "$1"
+  fi
 }
 
 # check_body DEVICE VERSION [FAILED_VERSION REASON]: the JSON body of a check (see ShulPortal's piHttp.ts).
