@@ -63,6 +63,17 @@ grep -v '^#' tests/install/comitup-web.sha256 | (cd "$pinned" && sha256sum --che
   { echo "FAIL: comitup's web pages changed (dpkg -s comitup: $(dpkg-query -W -f='${Version}' comitup)); see tests/install/comitup-web.sha256"; exit 1; }
 python3 -I tests/install/comitup_pages.py
 
+# The turn helper (started with the setup page, never at boot) can, as the kiosk user, keep a pick where the
+# kiosk reads it.
+[ -f /etc/systemd/system/shulportal-turn.service ] || { echo "FAIL: no turn helper unit"; exit 1; }
+SHULPORTAL_HOTSPOT_ADDR=127.0.0.1 runuser -u kiosk -- /usr/local/libexec/shulportal/turn-helper &
+helper=$!
+for _ in $(seq 50); do curl -s -o /dev/null http://127.0.0.1:8411/turn && break; sleep 0.1; done
+curl -fsS -d turn=left http://127.0.0.1:8411/turn
+[ "$(cat /var/lib/shulportal/turn)" = left ] || { echo "FAIL: the turn helper didn't save the pick"; exit 1; }
+rm /var/lib/shulportal/turn
+kill $helper; wait $helper 2>/dev/null || true
+
 # An update from a stub shulportal.com, signed with the throwaway key.
 cp "$work/shulportal-pi_9.0.0_all.deb" /var/lib/shulportal-update/current.deb
 echo 9.0.1 > "$work/target"

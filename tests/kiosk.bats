@@ -45,6 +45,20 @@ setup() {
   [[ $(logged systemctl) == *"restart shulportal-kiosk"* ]] || false
 }
 
+@test "refresh runs the turn helper only while the setup page is up, starting it before the kiosk" {
+  export STUB_CONNECTIVITY=none STUB_ACTIVE=ShulPortal-Setup-C3D4-9f2a
+  echo connecting > "$SHULPORTAL_RUN/page"
+  "$SHULPORTAL_BIN/shulportal-refresh"
+  [ "$(logged systemctl)" = "start shulportal-turn
+restart shulportal-kiosk" ]
+  rm "$STUB_LOG/systemctl.log"
+  export STUB_CONNECTIVITY=full STUB_ACTIVE=
+  "$SHULPORTAL_BIN/shulportal-refresh"
+  [ "$(cat "$SHULPORTAL_RUN/page")" = online ]
+  [ "$(logged systemctl)" = "stop shulportal-turn
+restart shulportal-kiosk" ]
+}
+
 @test "refresh names the hotspot from comitup's own id when it has one" {
   export STUB_CONNECTIVITY=none STUB_ACTIVE=ShulPortal-Setup-7A01-9f2a
   echo '{"id": "7A01"}' > "$SHULPORTAL_COMITUP_JSON"

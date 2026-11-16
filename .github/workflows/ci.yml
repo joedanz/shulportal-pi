@@ -11,7 +11,7 @@ jobs:
     container: debian:trixie
     steps:
       - uses: actions/checkout@v7
-      - run: apt-get update && apt-get install -y bats shellcheck qrencode jq xz-utils openssl dpkg
+      - run: apt-get update && apt-get install -y bats shellcheck qrencode jq xz-utils openssl dpkg python3
       - name: shellcheck
         run: |
           files=$(find stage-shulportal -path '*/files/*' -type f \( -path '*/bin/*' -o -path '*/lib/shulportal/*' -o -path '*/dispatcher.d/*' \); find scripts -type f -name '*.sh' 2>/dev/null; find stage-shulportal -name '*.sh'; echo debian/preinst debian/postinst debian/postrm tests/install/run.sh)

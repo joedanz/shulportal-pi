@@ -68,8 +68,9 @@ release() {
     "{\"device\":\"$ID\",\"version\":\"1.1.0\",\"failed\":{\"version\":\"1.1.1\",\"reason\":\"The download didnt finish.\"}}" ]
 }
 
-@test "reply_turn reads a turn right or left from a JSON reply, beside other fields" {
+@test "reply_turn reads a turn right, left or none from a JSON reply, beside other fields" {
   [ "$(reply_turn '{"turn":"right"}')" = right ]
+  [ "$(reply_turn '{"turn":"none"}')" = none ]
   [ "$(reply_turn ' { "turn" : "left" } ')" = left ]
   [ "$(reply_turn '{"install":"1.2.3","turn":"left"}')" = left ]
   [ -z "$(reply_turn '{}')" ]
@@ -276,6 +277,18 @@ SH
 
 # --- how the sign hangs ------------------------------------------------------------------------------
 
+@test "set_turn keeps right or left, forgets on none, and refuses anything else" {
+  f="$SHULPORTAL_STATE/turn"
+  set_turn "$f" left
+  [ "$(cat "$f")" = left ]
+  run set_turn "$f" sideways
+  [ "$status" -ne 0 ]
+  [ "$(cat "$f")" = left ]
+  set_turn "$f" none
+  [ ! -e "$f" ]
+  set_turn "$f" none
+}
+
 @test "a check that says turn right saves it for the kiosk" {
   export STUB_REPLY='{"turn":"right"}'
   update
@@ -283,11 +296,18 @@ SH
   [ "$(cat "$SHULPORTAL_STATE/turn")" = right ]
 }
 
-@test "a check with no turn forgets the old one" {
+@test "a check that says turn none forgets the old one" {
   echo right > "$SHULPORTAL_STATE/turn"
-  export STUB_REPLY='{}'
+  export STUB_REPLY='{"turn":"none"}'
   update
   [ ! -e "$SHULPORTAL_STATE/turn" ]
+}
+
+@test "a check with no turn (no sign has linked this Pi yet) keeps the one picked on the phone" {
+  echo left > "$SHULPORTAL_STATE/turn"
+  export STUB_REPLY='{}'
+  update
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = left ]
 }
 
 @test "the same turn isn't written again, so a check every 5 minutes leaves the SD card alone" {
