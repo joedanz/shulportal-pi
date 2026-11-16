@@ -164,7 +164,7 @@ install_target() {
 reply_turn() { reply_field "$1" turn 'right|left|none'; }
 
 # saved_turn FILE: the turn the kiosk uses (right or left), or nothing. A linked Pi's sign sets it (save_turn);
-# before that, the setup page on the phone does (libexec/shulportal/turn-helper).
+# before that, the setup page on the phone does (set_turn, from libexec/shulportal/turn-helper).
 saved_turn() {
   local t
   t=$(cat "$1" 2>/dev/null || true)
@@ -177,10 +177,16 @@ saved_turn() {
 save_turn() {
   local turn
   turn=$(reply_turn "$2")
-  case $turn in
-    '') ;;
+  [ -z "$turn" ] || set_turn "$1" "$turn"
+}
+
+# set_turn FILE TURN: keeps right or left, or forgets the turn on none (anything else changes nothing). Writes
+# only on a change. The one writer of the turn file: save_turn and the turn helper both come here.
+set_turn() {
+  case $2 in
     none) rm -f "$1" ;;
-    *) [ "$turn" = "$(saved_turn "$1")" ] || { printf '%s\n' "$turn" > "$1.tmp" && mv "$1.tmp" "$1"; } ;;
+    right | left) [ "$2" = "$(saved_turn "$1")" ] || { printf '%s\n' "$2" > "$1.tmp" && mv "$1.tmp" "$1"; } ;;
+    *) return 1 ;;
   esac
 }
 

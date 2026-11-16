@@ -125,7 +125,7 @@ p { margin: 0 0 12px; }
 .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line-soft); }
 
 /* Form fields, as the app's Input component. */
-label { display: block; font-weight: 600; font-size: 15px; margin: 0 0 6px; }
+label, legend { display: block; font-weight: 600; font-size: 15px; margin: 0 0 6px; padding: 0; }
 .field { position: relative; margin: 0 0 16px; }
 input[type="text"], input[type="password"] {
   display: block;
@@ -177,11 +177,10 @@ input:focus { border-color: var(--text); }
 
 /* How the TV hangs (confirm page): three equal tiles. */
 .mount { border: 0; margin: 4px 0 20px; padding: 0; min-width: 0; }
-.mount[hidden] { display: none; }
-.mount legend { font-weight: 600; font-size: 15px; margin: 0 0 8px; padding: 0; }
+.mount legend { margin-bottom: 8px; }
 .mount-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.mount-option { position: relative; display: flex; }
-.mount-option input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.mount-option { position: relative; display: flex; margin: 0; font-weight: inherit; }
+.mount-option input { position: absolute; inset: 0; z-index: 1; margin: 0; opacity: 0; cursor: pointer; }
 .mount-tile {
   flex: 1;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -190,7 +189,11 @@ input:focus { border-color: var(--text); }
   font-size: 14px; font-weight: 500; line-height: 1.25; text-align: center;
   transition: border-color 0.15s, background-color 0.15s;
 }
-.mount-tile svg { width: 56px; height: 48px; color: var(--muted); }
+.mount-tile svg {
+  width: 56px; height: 48px; color: var(--muted);
+  fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round;
+}
+.mount-tile svg.mirror { transform: scaleX(-1); }
 .mount-option input:checked + .mount-tile { border-color: var(--text); background: color-mix(in srgb, var(--gold) 10%, transparent); }
 .mount-option input:checked + .mount-tile svg { color: var(--text); }
 .mount-option input:focus-visible + .mount-tile { outline: 2px solid var(--text); outline-offset: 2px; }

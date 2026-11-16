@@ -277,6 +277,18 @@ SH
 
 # --- how the sign hangs ------------------------------------------------------------------------------
 
+@test "set_turn keeps right or left, forgets on none, and refuses anything else" {
+  f="$SHULPORTAL_STATE/turn"
+  set_turn "$f" left
+  [ "$(cat "$f")" = left ]
+  run set_turn "$f" sideways
+  [ "$status" -ne 0 ]
+  [ "$(cat "$f")" = left ]
+  set_turn "$f" none
+  [ ! -e "$f" ]
+  set_turn "$f" none
+}
+
 @test "a check that says turn right saves it for the kiosk" {
   export STUB_REPLY='{"turn":"right"}'
   update

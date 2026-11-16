@@ -48,5 +48,7 @@ if [ "$page" = setup ]; then
 fi
 if [ "$page" != "$current" ]; then
   echo "$page" > "$run/page"
+  # The turn helper takes the phone's pick during Wi-Fi setup; it has nothing to do otherwise.
+  if [ "$page" = setup ]; then "$systemctl" start shulportal-turn || true; else "$systemctl" stop shulportal-turn || true; fi
   "$systemctl" restart shulportal-kiosk
 fi

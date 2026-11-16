@@ -1,61 +1,46 @@
 #!/usr/bin/env python3
 # ABOUTME: Keeps how a TV hangs as picked on the phone during Wi-Fi setup, for a Pi no sign has linked yet.
-# ABOUTME: The setup page posts the pick over the hotspot; the TV's own pages read it back on loopback (tv.js).
-"""Small HTTP service on port 8411, as the kiosk user.
+# ABOUTME: The setup page posts the pick over the hotspot; the TV's setup page reads it back on loopback (tv.js).
+"""Small HTTP service on port 8411, as the kiosk user, while the setup page is up (shulportal-refresh).
 
-GET  /turn            right, left or none; from the hotspot (the phone page) or loopback (the TV's pages).
+GET  /turn            right, left or none; from the hotspot (the phone page) or loopback (the TV's setup page).
 POST /turn turn=...   right, left or none; from the hotspot only, so nobody on the shul's network can turn a TV.
 
-It writes the same file shulportal-update keeps the sign's turn in (lib.sh save_turn); once a sign links the
-Pi, the sign's turn replaces the phone's.
+The turn file is lib.sh's: it writes through set_turn, as shulportal-update does with the sign's turn, so once a
+sign links the Pi, the sign's turn replaces the phone's.
 """
 import os
-import sys
+import subprocess
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs
 
-STATE = os.environ.get("SHULPORTAL_STATE", "/var/lib/shulportal")
+LIB = os.environ.get("SHULPORTAL_LIB", "/usr/local/lib/shulportal/lib.sh")
+TURN_FILE = os.path.join(os.environ.get("SHULPORTAL_STATE", "/var/lib/shulportal"), "turn")
 PORT = int(os.environ.get("SHULPORTAL_TURN_PORT", "8411"))
 # comitup's hotspot address (its web page lives at http://10.41.0.1/).
 HOTSPOT = os.environ.get("SHULPORTAL_HOTSPOT_ADDR", "10.41.0.1")
 LOOPBACK = {"127.0.0.1", "::1"}
-TURNS = ("right", "left", "none")
-
-
-def turn_file():
-    return os.path.join(STATE, "turn")
 
 
 def read_turn():
+    """lib.sh saved_turn, or none."""
     try:
-        with open(turn_file()) as f:
+        with open(TURN_FILE) as f:
             turn = f.read().strip()
     except OSError:
         return "none"
     return turn if turn in ("right", "left") else "none"
 
 
-def write_turn(turn):
-    """Saves right or left, or forgets the turn on none. Writes only on a change."""
-    if turn == read_turn():
-        return
-    if turn == "none":
-        try:
-            os.remove(turn_file())
-        except FileNotFoundError:
-            pass
-        return
-    tmp = turn_file() + ".tmp"
-    with open(tmp, "w") as f:
-        f.write(turn + "\n")
-    os.replace(tmp, turn_file())
+def set_turn(turn):
+    """lib.sh set_turn: False for anything but right, left or none."""
+    script = 'source "$0" && set_turn "$1" "$2"'
+    return subprocess.run(["bash", "-c", script, LIB, TURN_FILE, turn]).returncode == 0
 
 
 def may(method, local_addr):
     """Who may do what, by the address the request reached: the hotspot's, or loopback for reading."""
-    if local_addr == HOTSPOT:
-        return True
-    return method == "GET" and local_addr in LOOPBACK
+    return local_addr == HOTSPOT or (method == "GET" and local_addr in LOOPBACK)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -74,11 +59,11 @@ class Handler(BaseHTTPRequestHandler):
     def allowed(self):
         if self.path.split("?")[0] != "/turn":
             self.reply(404)
-            return False
-        if not may(self.command, self.connection.getsockname()[0]):
+        elif not may(self.command, self.connection.getsockname()[0]):
             self.reply(403)
-            return False
-        return True
+        else:
+            return True
+        return False
 
     def do_GET(self):
         if self.allowed():
@@ -88,26 +73,17 @@ class Handler(BaseHTTPRequestHandler):
         if not self.allowed():
             return
         length = int(self.headers.get("Content-Length") or 0)
-        if not 0 < length <= 64:
+        body = self.rfile.read(length).decode("ascii", "replace") if 0 < length <= 64 else ""
+        turn = parse_qs(body).get("turn", [""])[0]
+        if not set_turn(turn):
             self.reply(400)
             return
-        turn = parse_qs(self.rfile.read(length).decode("ascii", "replace")).get("turn", [""])[0]
-        if turn not in TURNS:
-            self.reply(400)
-            return
-        write_turn(turn)
         print(f"turn {turn}, picked on the phone", flush=True)
         self.reply(204)
 
     def log_message(self, *args):
-        pass  # the TV's pages ask every few seconds; only a pick is worth a journal line
-
-
-def main():
-    server = HTTPServer(("", PORT), Handler)
-    print(f"listening on port {PORT}", file=sys.stderr, flush=True)
-    server.serve_forever()
+        pass  # the TV's setup page asks every few seconds; only a pick is worth a journal line
 
 
 if __name__ == "__main__":
-    main()
+    HTTPServer(("", PORT), Handler).serve_forever()
