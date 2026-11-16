@@ -52,6 +52,12 @@ release() {
   done
 }
 
+@test "install_target reads the install beside other fields, in any order" {
+  [ "$(install_target '{"install":"1.1.1","turn":"right"}' 1.1.0)" = 1.1.1 ]
+  [ "$(install_target '{"turn":"left", "install" : "1.1.1"}' 1.1.0)" = 1.1.1 ]
+  [ -z "$(install_target 'oops {"install":"1.1.1"}' 1.1.0)" ]
+}
+
 @test "install_target never installs on a Pi whose own version isn't x.y.z" {
   [ -z "$(install_target '{"install":"1.1.1"}' 0.0.0+dev.abc1234)" ]
 }
@@ -62,9 +68,10 @@ release() {
     "{\"device\":\"$ID\",\"version\":\"1.1.0\",\"failed\":{\"version\":\"1.1.1\",\"reason\":\"The download didnt finish.\"}}" ]
 }
 
-@test "reply_turn takes only a reply that is exactly a turn right or left" {
+@test "reply_turn reads a turn right or left from a JSON reply, beside other fields" {
   [ "$(reply_turn '{"turn":"right"}')" = right ]
   [ "$(reply_turn ' { "turn" : "left" } ')" = left ]
+  [ "$(reply_turn '{"install":"1.2.3","turn":"left"}')" = left ]
   [ -z "$(reply_turn '{}')" ]
   [ -z "$(reply_turn '{"turn":"upside-down"}')" ]
   [ -z "$(reply_turn '{"install":"1.2.3"}')" ]
@@ -292,11 +299,10 @@ SH
   [ -z "$(find "$SHULPORTAL_STATE/turn" -newermt 2021-01-01)" ]
 }
 
-@test "an install reply, which never carries a turn, keeps the saved one" {
-  echo right > "$SHULPORTAL_STATE/turn"
-  export STUB_REPLY='{"install":"0.0.1"}'
+@test "a turn that comes with an install is saved too" {
+  export STUB_REPLY='{"install":"0.0.1","turn":"left"}'
   update
-  [ "$(cat "$SHULPORTAL_STATE/turn")" = right ]
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = left ]
 }
 
 @test "offline, the saved turn stays" {

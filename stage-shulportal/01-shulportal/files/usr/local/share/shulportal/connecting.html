@@ -6,11 +6,7 @@
 <meta charset="utf-8">
 <title>ShulPortal</title>
 <link rel="stylesheet" href="file:///usr/local/share/shulportal/tv.css">
-<script>
-  // ShulPortal says how this TV hangs (shulportal-kiosk adds ?turn=right or ?turn=left); turn the page to match.
-  var turn = new URLSearchParams(location.search).get("turn");
-  if (turn === "right" || turn === "left") document.documentElement.dataset.turn = turn;
-</script>
+<script src="file:///usr/local/share/shulportal/tv.js"></script>
 </head>
 <body>
 <div class="screen">

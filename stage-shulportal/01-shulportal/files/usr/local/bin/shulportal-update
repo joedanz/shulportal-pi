@@ -62,21 +62,8 @@ fi
 reply=$(check "$body") || exit 0
 rm -f "$update_dir/failed"
 
-# How the sign hangs, for the pages the kiosk shows itself. An install reply carries none, so it changes nothing;
-# the turn is written only when it changes, so a check every 5 minutes leaves the SD card alone.
-case $reply in
-  *'"install"'*) ;;
-  *)
-    turn=$(reply_turn "$reply")
-    if [ "$turn" != "$(saved_turn "$state/turn")" ]; then
-      if [ -n "$turn" ]; then
-        printf '%s\n' "$turn" > "$state/turn.tmp" && mv "$state/turn.tmp" "$state/turn"
-      else
-        rm -f "$state/turn"
-      fi
-    fi
-    ;;
-esac
+# How the sign hangs, for the pages the kiosk shows itself.
+save_turn "$state/turn" "$reply"
 
 target=$(install_target "$reply" "$version")
 [ -n "$target" ] || exit 0
