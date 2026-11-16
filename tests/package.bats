@@ -52,3 +52,31 @@ build() {
 @test "postrm gives comitup its config back when the package goes" {
   grep -q 'dpkg-divert --package shulportal-pi --remove --rename --divert /etc/comitup.conf.comitup /etc/comitup.conf' "$ROOT/debian/postrm"
 }
+
+# comitup's own Wi-Fi pages, replaced by ShulPortal's (files/usr/share/comitup/web/templates).
+COMITUP_PAGES="index confirm connect"
+
+@test "the package ships a ShulPortal version of each comitup Wi-Fi page" {
+  for p in $COMITUP_PAGES; do
+    [ -f "$FILES/usr/share/comitup/web/templates/$p.html" ] || { echo "missing $p.html"; false; }
+  done
+}
+
+@test "preinst diverts comitup's Wi-Fi pages" {
+  for p in $COMITUP_PAGES; do
+    grep -qF "dpkg-divert --package shulportal-pi --add --rename --divert \$pages/$p.html.comitup \$pages/$p.html" "$ROOT/debian/preinst" ||
+      { echo "no divert for $p.html"; false; }
+  done
+}
+
+@test "postrm gives comitup its Wi-Fi pages back when the package goes" {
+  for p in $COMITUP_PAGES; do
+    grep -qF "dpkg-divert --package shulportal-pi --remove --rename --divert \$pages/$p.html.comitup \$pages/$p.html" "$ROOT/debian/postrm" ||
+      { echo "no undivert for $p.html"; false; }
+  done
+}
+
+@test "the diverted pages are comitup's template folder" {
+  grep -qx 'pages=/usr/share/comitup/web/templates' "$ROOT/debian/preinst"
+  grep -qx 'pages=/usr/share/comitup/web/templates' "$ROOT/debian/postrm"
+}

@@ -1,0 +1,207 @@
+/* ABOUTME: ShulPortal look for comitup's Wi-Fi setup pages on the phone (index, confirm, connect).
+   ABOUTME: Self-contained: the phone has no internet on the setup hotspot, so fonts are served from the Pi. */
+
+@font-face {
+  font-family: "DM Serif Display";
+  src: url("shulportal/dm-serif-display.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Outfit";
+  src: url("shulportal/outfit.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* The ShulPortal app's palette (src/index.css). */
+:root {
+  --bg: #f2f0e9;          /* portal-50 */
+  --card: #ffffff;
+  --line: #ccc5b0;        /* portal-200 */
+  --line-soft: #e6e2d6;   /* portal-100 */
+  --text: #0f172a;        /* midnight-900 */
+  --muted: #665838;       /* portal-600 */
+  --placeholder: #998b65; /* portal-400 */
+  --button: #0f172a;
+  --button-hover: #1e293b;
+  --button-text: #f2f0e9;
+  --gold: #d4af37;
+  --error: #c04000;       /* accent-flame */
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #020617;          /* midnight-950 */
+    --card: #0f172a;        /* midnight-900 */
+    --line: #334155;        /* midnight-700 */
+    --line-soft: #1e293b;   /* midnight-800 */
+    --text: #f2f0e9;
+    --muted: #cbd5e1;       /* midnight-300 */
+    --placeholder: #64748b; /* midnight-500 */
+    --button: #f2f0e9;
+    --button-hover: #e6e2d6;
+    --button-text: #0f172a;
+    color-scheme: dark;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.page {
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+}
+
+/* Wordmark, as in the app's header and footer. */
+.brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 20px; }
+.brand-mark {
+  width: 22px; height: 22px; background: var(--text);
+  border-radius: 2px 10px 2px 10px;
+}
+.brand-name { font-family: "DM Serif Display", Georgia, serif; font-size: 22px; letter-spacing: -0.01em; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 24px 20px;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.06);
+}
+
+.icon-badge {
+  width: 56px; height: 56px; margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--gold) 16%, transparent);
+  color: var(--gold);
+}
+.icon-badge svg { width: 28px; height: 28px; }
+
+h1 {
+  font-family: "DM Serif Display", Georgia, serif;
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.15;
+  text-align: center;
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.lead { text-align: center; color: var(--muted); margin: 0 0 20px; }
+p { margin: 0 0 12px; }
+.small { font-size: 14px; color: var(--muted); }
+.center { text-align: center; }
+
+/* Network list */
+.networks { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.networks li + li { border-top: 1px solid var(--line-soft); }
+.network {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 56px; padding: 12px 16px;
+  color: inherit; text-decoration: none;
+}
+.network:active, .network:hover { background: color-mix(in srgb, var(--line) 25%, transparent); }
+.network:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
+.network-name { flex: 1; min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+.network svg { flex-shrink: 0; width: 20px; height: 20px; color: var(--muted); }
+.network .chevron { width: 18px; height: 18px; }
+
+.empty { text-align: center; padding: 20px 8px; border: 1px dashed var(--line); border-radius: 16px; }
+
+.divider { display: flex; align-items: center; gap: 12px; margin: 24px 0 16px; color: var(--muted); font-size: 14px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line-soft); }
+
+/* Form fields, as the app's Input component. */
+label { display: block; font-weight: 600; font-size: 15px; margin: 0 0 6px; }
+.field { position: relative; margin: 0 0 16px; }
+input[type="text"], input[type="password"] {
+  display: block;
+  width: 100%;
+  height: 52px;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 17px; /* 16px or more, so iOS doesn't zoom the page on focus */
+  color: var(--text);
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color 0.15s;
+}
+input::placeholder { color: var(--placeholder); opacity: 1; }
+input:focus { border-color: var(--text); }
+.field.has-toggle input { padding-right: 64px; }
+.toggle {
+  position: absolute; right: 6px; bottom: 6px;
+  height: 40px; min-width: 52px; padding: 0 10px;
+  border: 0; border-radius: 12px; background: transparent;
+  color: var(--muted); font: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+}
+.toggle:focus-visible { outline: 2px solid var(--text); }
+
+/* Buttons, as the app's Button component. */
+.button {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 24px;
+  border: 2px solid var(--button);
+  border-radius: 999px;
+  background: var(--button);
+  color: var(--button-text);
+  font: inherit; font-size: 17px; font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.button:hover { background: var(--button-hover); }
+.button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.button.outline { background: transparent; color: var(--text); }
+.button.outline:hover { background: color-mix(in srgb, var(--line) 30%, transparent); }
+.button + .button { margin-top: 12px; }
+
+.back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: var(--muted); text-decoration: none; font-weight: 500; }
+.back svg { width: 18px; height: 18px; }
+
+.note {
+  margin: 20px 0 0; padding: 14px 16px;
+  border-radius: 16px; background: color-mix(in srgb, var(--line) 22%, transparent);
+  font-size: 15px; color: var(--muted);
+}
+.note strong { color: var(--text); font-weight: 600; }
+
+.locate { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; }
+/* comitup's blink.js swaps this picture; the light that matters is on the Pi, so it stays out of sight. */
+.locate img { display: none; }
+.locate .button { width: auto; min-height: 44px; font-size: 15px; padding: 0 18px; }
+
+.steps { margin: 16px 0 0; padding: 0; list-style: none; counter-reset: step; }
+.steps li { position: relative; padding: 0 0 12px 40px; counter-increment: step; }
+.steps li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: -1px;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--button); color: var(--button-text); font-size: 14px; font-weight: 600;
+}
+
+footer { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted); }
