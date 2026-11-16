@@ -5,24 +5,31 @@
 <head>
 <meta charset="utf-8">
 <title>ShulPortal setup</title>
-<style>
-  html, body { margin: 0; height: 100%; background: #0b1f3a; color: #fff; font-family: system-ui, sans-serif; cursor: none; }
-  main { height: 100%; display: flex; align-items: center; justify-content: center; gap: 6vw; padding: 0 6vw; box-sizing: border-box; }
-  .qr { background: #fff; padding: 1.5vw; border-radius: 1vw; width: 28vw; flex-shrink: 0; }
-  .qr svg { display: block; width: 100%; height: auto; }
-  h1 { font-size: 4.5vw; margin: 0 0 1vw; font-weight: 600; }
-  .ssid { font-size: 3.6vw; font-weight: 700; color: #e3b341; margin: 0 0 3vw; white-space: nowrap; }
-  p { font-size: 2.6vw; line-height: 1.4; margin: 0; max-width: 45vw; }
-</style>
+<link rel="stylesheet" href="file:///usr/local/share/shulportal/tv.css">
+<script>
+  // ShulPortal says how this TV hangs (shulportal-kiosk adds ?turn=right or ?turn=left); turn the page to match.
+  var turn = new URLSearchParams(location.search).get("turn");
+  if (turn === "right" || turn === "left") document.documentElement.dataset.turn = turn;
+</script>
 </head>
 <body>
-<main>
-  <div class="qr">{{QR}}</div>
-  <div>
-    <h1>Connect your phone to Wi-Fi</h1>
-    <p class="ssid">{{SSID}}</p>
-    <p>Then pick the shul's Wi-Fi on the page that opens and enter its password.</p>
-  </div>
-</main>
+<div class="screen">
+  <div class="brand"><span class="brand-mark"></span><span class="brand-name">ShulPortal</span></div>
+  <main class="body">
+    <div class="setup">
+      <div class="qr">{{QR}}</div>
+      <div class="text">
+        <p class="eyebrow">Set up this TV</p>
+        <h1>Connect it to the shul's Wi-Fi</h1>
+        <ol class="steps">
+          <li>Scan the code with your phone's camera, or join this Wi-Fi:<br><span class="ssid">{{SSID}}</span></li>
+          <li>On the page that opens, pick the shul's Wi-Fi and enter its password.</li>
+          <li class="hint">This TV then shows a code to link it in ShulPortal.</li>
+        </ol>
+      </div>
+    </div>
+  </main>
+  <div class="footer">shulportal.com</div>
+</div>
 </body>
 </html>

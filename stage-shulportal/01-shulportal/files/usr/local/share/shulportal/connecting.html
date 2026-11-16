@@ -5,11 +5,23 @@
 <head>
 <meta charset="utf-8">
 <title>ShulPortal</title>
-<style>
-  html, body { margin: 0; height: 100%; background: #0b1f3a; color: #fff; font-family: system-ui, sans-serif; cursor: none; }
-  main { height: 100%; display: flex; align-items: center; justify-content: center; }
-  h1 { font-size: 4vw; font-weight: 500; }
-</style>
+<link rel="stylesheet" href="file:///usr/local/share/shulportal/tv.css">
+<script>
+  // ShulPortal says how this TV hangs (shulportal-kiosk adds ?turn=right or ?turn=left); turn the page to match.
+  var turn = new URLSearchParams(location.search).get("turn");
+  if (turn === "right" || turn === "left") document.documentElement.dataset.turn = turn;
+</script>
 </head>
-<body><main><h1>Connecting to the internet…</h1></main></body>
+<body>
+<div class="screen">
+  <div class="brand"><span class="brand-mark"></span><span class="brand-name">ShulPortal</span></div>
+  <main class="body">
+    <div class="message">
+      <div class="spinner"></div>
+      <h1>Connecting to the internet…</h1>
+      <p>This takes a moment after the TV turns on.</p>
+    </div>
+  </main>
+</div>
+</body>
 </html>

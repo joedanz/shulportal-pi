@@ -62,6 +62,15 @@ release() {
     "{\"device\":\"$ID\",\"version\":\"1.1.0\",\"failed\":{\"version\":\"1.1.1\",\"reason\":\"The download didnt finish.\"}}" ]
 }
 
+@test "reply_turn takes only a reply that is exactly a turn right or left" {
+  [ "$(reply_turn '{"turn":"right"}')" = right ]
+  [ "$(reply_turn ' { "turn" : "left" } ')" = left ]
+  [ -z "$(reply_turn '{}')" ]
+  [ -z "$(reply_turn '{"turn":"upside-down"}')" ]
+  [ -z "$(reply_turn '{"install":"1.2.3"}')" ]
+  [ -z "$(reply_turn '<html>{"turn":"right"}</html>')" ]
+}
+
 # --- the updater -------------------------------------------------------------------------------------
 
 @test "posts to shulportal.com by default" {
@@ -256,4 +265,43 @@ SH
   [ "$status" -eq 0 ]
   # It waited for the refresh holding the lock before it wrote the updating page.
   [ "$took" -ge 2 ]
+}
+
+# --- how the sign hangs ------------------------------------------------------------------------------
+
+@test "a check that says turn right saves it for the kiosk" {
+  export STUB_REPLY='{"turn":"right"}'
+  update
+  [ "$status" -eq 0 ]
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = right ]
+}
+
+@test "a check with no turn forgets the old one" {
+  echo right > "$SHULPORTAL_STATE/turn"
+  export STUB_REPLY='{}'
+  update
+  [ ! -e "$SHULPORTAL_STATE/turn" ]
+}
+
+@test "the same turn isn't written again, so a check every 5 minutes leaves the SD card alone" {
+  echo left > "$SHULPORTAL_STATE/turn"
+  touch -t 202001010000 "$SHULPORTAL_STATE/turn"
+  export STUB_REPLY='{"turn":"left"}'
+  update
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = left ]
+  [ -z "$(find "$SHULPORTAL_STATE/turn" -newermt 2021-01-01)" ]
+}
+
+@test "an install reply, which never carries a turn, keeps the saved one" {
+  echo right > "$SHULPORTAL_STATE/turn"
+  export STUB_REPLY='{"install":"0.0.1"}'
+  update
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = right ]
+}
+
+@test "offline, the saved turn stays" {
+  echo right > "$SHULPORTAL_STATE/turn"
+  export STUB_CURL_OFFLINE=yes
+  update
+  [ "$(cat "$SHULPORTAL_STATE/turn")" = right ]
 }

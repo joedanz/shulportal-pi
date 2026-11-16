@@ -153,6 +153,19 @@ install_target() {
   return 0
 }
 
+# reply_turn REPLY: how ShulPortal says this TV hangs, printed only when the check reply is exactly
+# {"turn":"right"} or {"turn":"left"}; anything else, an install reply included, prints nothing.
+reply_turn() {
+  printf '%s\n' "$1" | sed -En 's/^[[:space:]]*\{[[:space:]]*"turn"[[:space:]]*:[[:space:]]*"(right|left)"[[:space:]]*\}[[:space:]]*$/\1/p' | head -n1
+}
+
+# saved_turn FILE: the turn shulportal-update saved (right or left), or nothing.
+saved_turn() {
+  local t
+  t=$(cat "$1" 2>/dev/null || true)
+  case $t in right | left) printf '%s\n' "$t" ;; esac
+}
+
 # check_body DEVICE VERSION [FAILED_VERSION REASON]: the JSON body of a check (see ShulPortal's piHttp.ts).
 # The reason loses any quote, backslash or control character, so it can't break the JSON.
 check_body() {

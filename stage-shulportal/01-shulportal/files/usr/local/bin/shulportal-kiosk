@@ -14,18 +14,21 @@ mark_clean_exit "$profile/Default/Preferences"
 # A power cut leaves Chromium's single-instance locks behind; they'd point at a dead process.
 rm -f "$profile/SingletonLock" "$profile/SingletonSocket" "$profile/SingletonCookie"
 
+# How the TV hangs, from its sign (shulportal-update saves it): the pages below turn to match.
+turn=$(saved_turn "$state/turn")
+
 case "$(cat "$run/page" 2>/dev/null || true)" in
   online | cached)
     # The device id lets the admin page offer this Pi updates; without one the sign still shows.
     if id=$(ensure_device_id "$state/device-id" 2>/dev/null); then
-      url="https://shulportal.com/tv?device=$id"
+      url="https://shulportal.com/tv?device=$id${turn:+&turn=$turn}"
     else
-      url=https://shulportal.com/tv
+      url="https://shulportal.com/tv${turn:+?turn=$turn}"
     fi
     ;;
-  setup) url="file://$run/setup.html" ;;
-  updating) url="file://$share/updating.html" ;;
-  *) url="file://$share/connecting.html" ;;
+  setup) url="file://$run/setup.html${turn:+?turn=$turn}" ;;
+  updating) url="file://$share/updating.html${turn:+?turn=$turn}" ;;
+  *) url="file://$share/connecting.html${turn:+?turn=$turn}" ;;
 esac
 
 exec "${SHULPORTAL_CHROMIUM:-chromium}" \
