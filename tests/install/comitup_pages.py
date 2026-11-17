@@ -137,6 +137,7 @@ def main():
     form = Page(html).forms[0]
     check((form["action"], form["method"]) == ("/connect", "post"), "password form posts to /connect")
     check('type="password"' in html, "secured network asks for a password")
+    check("autofocus" not in html, "password page opens at the top, not scrolled to the field with the keyboard up")
     check('id="turn-pick" hidden' in html and all(f'value="{t}"' in html for t in ("none", "right", "left")),
           "password page asks how the TV hangs, hidden until the turn helper answers")
     check(":8411/turn" in html, "the pick goes to the turn helper")
